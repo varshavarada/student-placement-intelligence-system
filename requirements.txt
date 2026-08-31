@@ -1,0 +1,8 @@
+pandas
+matplotlib
+scikit-learn
+streamlit
+joblib
+plotly
+python-dotenv
+groq
