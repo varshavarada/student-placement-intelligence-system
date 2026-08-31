@@ -2,7 +2,13 @@
 
 A data-driven placement analytics and student intelligence platform that transforms student placement data into meaningful analytics, benchmark comparisons, personalized preparation recommendations, machine-learning estimates, and AI-generated placement-readiness reports.
 
-> **Important:** This project currently uses a **synthetic student placement dataset**. Analytics and machine-learning outputs are intended for demonstration and decision-support purposes and must not be interpreted as guaranteed real-world placement outcomes.
+## 🚀 Live Demo
+
+**Try the deployed application:**
+
+https://student-placement-intelligence-vaidehi.streamlit.app/
+
+> **Important:** This project currently uses a **synthetic student placement dataset**. Analytics, recommendations, and machine-learning outputs are intended for demonstration and decision-support purposes and must not be interpreted as guaranteed real-world placement outcomes.
 
 ---
 
@@ -119,7 +125,7 @@ Placement rates are analyzed across:
 * Academic branches
 * College tiers
 
-In the current synthetic dataset, these differences are relatively small. The dashboard therefore explicitly warns users not to over-interpret minor differences.
+In the current synthetic dataset, these differences are relatively small. The dashboard therefore warns users not to over-interpret minor differences.
 
 ---
 
@@ -151,7 +157,7 @@ To reduce misleading conclusions from very small groups, each group includes:
 
 Groups containing fewer than **100 students** are treated as low-sample groups and excluded from the main trend visualization.
 
-For example, a very small group showing a 100% placement rate is not presented as a reliable general trend.
+For example, a very small group showing a high placement rate is not automatically presented as a reliable general trend.
 
 These analyses represent **associations within the synthetic dataset and not causal relationships**.
 
@@ -196,7 +202,7 @@ This creates a neutral zone around the benchmark and prevents very small differe
 
 Recommendations are generated from the student's identified improvement areas.
 
-Examples include:
+Depending on the student's profile, recommendations may include:
 
 * Improving coding through practical development
 * Practicing quantitative aptitude
@@ -225,7 +231,7 @@ Models evaluated include:
 * Gradient Boosting
 * Soft Voting Ensemble
 
-### Evaluation Results
+### Model Evaluation Results
 
 | Model                | Accuracy | Precision |     Recall |   F1 Score |    ROC-AUC |
 | -------------------- | -------: | --------: | ---------: | ---------: | ---------: |
@@ -240,7 +246,7 @@ Logistic Regression produced the strongest ROC-AUC among the evaluated models an
 
 The predictive performance is intentionally reported transparently.
 
-The dataset contains relatively weak predictive separation between placed and non-placed students. Therefore, the project does **not** claim that the model can reliably determine whether a real student will be placed.
+The dataset contains relatively weak predictive separation between placed and non-placed students. Therefore, this project does **not** claim that the model can reliably determine whether a real student will be placed.
 
 The model output is presented as a:
 
@@ -254,7 +260,7 @@ The trained model is cached using `joblib`, preventing unnecessary retraining wh
 
 ## ✨ AI-Generated Placement Readiness Reports
 
-The project integrates the Groq API to generate natural-language student placement-readiness reports.
+The project integrates the **Groq API** to generate natural-language student placement-readiness reports.
 
 The current report generation pipeline uses:
 
@@ -290,7 +296,7 @@ The generated report contains:
 * Model Estimate
 * Important Note
 
-### AI Grounding and Safety
+### AI Grounding and Guardrails
 
 The LLM is instructed to:
 
@@ -300,11 +306,18 @@ The LLM is instructed to:
 * Avoid causal placement claims.
 * Avoid presenting ML estimates as guarantees.
 * Avoid inventing companies, platforms, certifications, or target careers.
-* Avoid inventing timelines or preparation schedules.
+* Avoid inventing preparation timelines or numerical improvement targets.
 * Respect already-identified student strengths.
+* Base recommendations on system-generated preparation actions.
 * Clearly disclose that the dataset is synthetic.
 
-If the Groq service fails or returns an unusable response, the application automatically generates a deterministic fallback report instead of crashing.
+### AI Fallback System
+
+The application includes a deterministic fallback report generator.
+
+If the external AI service is unavailable or returns an unusable response, the system generates a structured report using verified analytics and recommendations instead of allowing the application to fail.
+
+This improves the reliability of the deployed application.
 
 ---
 
@@ -331,11 +344,11 @@ Provides:
 Allows a student ID to be entered and displays:
 
 * Student profile
-* Benchmark comparison
+* Placed-student benchmark comparison
 * Strengths
-* Improvement areas
-* Personalized recommendations
-* ML placement estimate
+* Priority improvement areas
+* Personalized preparation recommendations
+* Machine-learning placement estimate
 * AI-generated placement-readiness report
 
 ---
@@ -361,11 +374,13 @@ Allows a student ID to be entered and displays:
 * Scikit-learn
 * Joblib
 
-### AI / LLM
+### Generative AI
 
 * Groq API
-* GPT-OSS model
-* Prompt grounding and guardrails
+* GPT-OSS
+* Prompt engineering
+* Grounded report generation
+* Deterministic fallback reporting
 
 ### Application
 
@@ -374,11 +389,13 @@ Allows a student ID to be entered and displays:
 ### Configuration
 
 * python-dotenv
+* Streamlit Secrets
 
-### Version Control
+### Version Control & Deployment
 
 * Git
 * GitHub
+* Streamlit Community Cloud
 
 ---
 
@@ -425,7 +442,7 @@ The prototype uses the **Student Placement Prediction Dataset 2026** published o
 
 Dataset characteristics:
 
-* Approximately 100,000 records
+* 100,000 records
 * 26 columns
 * Academic attributes
 * Technical skill scores
@@ -443,15 +460,27 @@ The dataset is **synthetic**.
 
 It does not represent 100,000 verified real-world students.
 
-The project uses it to demonstrate the architecture and functionality of a placement intelligence system.
+The project uses the dataset to demonstrate the architecture and functionality of a placement intelligence system.
 
-Dataset source:
+**Dataset:** Student Placement Prediction Dataset 2026
+**Source:** Kaggle
+**Author:** Mansehaj Preet
+**License:** CC0: Public Domain
 
-`Student Placement Prediction Dataset 2026 — Kaggle`
+---
 
-License:
+## 📈 Current Dataset Overview
 
-`CC0: Public Domain`
+The current dataset contains:
+
+* **Total Students:** 100,000
+* **Placed Students:** 54,459
+* **Not Placed:** 45,541
+* **Placement Rate:** 54.46%
+* **Average Salary of Placed Students:** 13.32 LPA
+* **Highest Salary:** 20.44 LPA
+
+These values describe the current synthetic dataset and should not be generalized to real institutions or student populations.
 
 ---
 
@@ -460,20 +489,20 @@ License:
 ### 1. Clone the Repository
 
 ```bash
-git clone <your-repository-url>
-cd <repository-folder>
+git clone https://github.com/varshavarada/student-placement-intelligence-system.git
+cd student-placement-intelligence-system
 ```
 
 ### 2. Create a Virtual Environment
 
-Windows:
+#### Windows
 
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
 ```
 
-macOS/Linux:
+#### macOS / Linux
 
 ```bash
 python -m venv .venv
@@ -490,33 +519,21 @@ pip install -r requirements.txt
 
 ## 🔐 Environment Configuration
 
-Create a `.env` file in the project root:
+For local development, create a `.env` file in the project root:
 
 ```text
 GROQ_API_KEY=your_groq_api_key
 ```
 
-Never commit the `.env` file or API keys to GitHub.
+Never commit the `.env` file or API credentials to GitHub.
 
-The repository's `.gitignore` should exclude sensitive configuration.
-
----
-
-## 📥 Dataset Setup
-
-Download the dataset from Kaggle and place the CSV file at:
-
-```text
-data/placement_data.csv
-```
-
-The dataset file is intentionally excluded from Git version control.
+For Streamlit Community Cloud deployment, the Groq API key should be configured through **Streamlit Secrets** rather than stored in the repository.
 
 ---
 
 ## ▶️ Running the Project
 
-### Run the Complete Analysis Pipeline
+### Run the Analysis Pipeline
 
 ```bash
 python src/main.py
@@ -534,17 +551,43 @@ Streamlit will provide a local application URL in the terminal.
 
 ---
 
+## ☁️ Deployment
+
+The application is deployed using **Streamlit Community Cloud**.
+
+### Live Application
+
+https://student-placement-intelligence-vaidehi.streamlit.app/
+
+Deployment configuration:
+
+```text
+Repository:
+varshavarada/student-placement-intelligence-system
+
+Branch:
+main
+
+Main file:
+app/dashboard.py
+```
+
+The Groq API credential is configured securely through Streamlit's secrets management and is not stored in the GitHub repository.
+
+---
+
 ## 🔒 Security Practices
 
 The project follows several basic security practices:
 
-* API keys are stored through environment variables.
+* API keys are stored using environment variables or deployment secrets.
 * `.env` is excluded from Git.
-* The dataset is excluded from the repository.
+* Virtual environments and IDE-specific files are excluded from version control.
+* Secrets are not hard-coded in Python source files.
 * The LLM receives structured application information rather than unrestricted system access.
 * A deterministic fallback report protects application availability when the external AI service fails.
 
-For real institutional deployment, additional authentication, authorization, encryption, privacy review, logging, and student-data governance would be required.
+For real institutional deployment, additional authentication, authorization, encryption, privacy review, audit logging, and student-data governance would be required.
 
 ---
 
@@ -554,9 +597,10 @@ For real institutional deployment, additional authentication, authorization, enc
 2. ML predictive performance is limited.
 3. Placement relationships shown by analytics are associations, not proof of causation.
 4. The system currently benchmarks students against aggregate placed-student statistics rather than institution-specific cohorts.
-5. The AI report depends on an external LLM service when live generation is enabled.
+5. AI generation depends on an external LLM service when live generation is enabled.
 6. The prototype does not currently include user authentication or institutional access controls.
 7. Recommendations are preparation guidance rather than guarantees of placement success.
+8. Real institutional deployment would require validated data, privacy controls, fairness evaluation, and continuous monitoring.
 
 ---
 
@@ -565,19 +609,21 @@ For real institutional deployment, additional authentication, authorization, enc
 Potential production-level extensions include:
 
 * Integration with verified institutional placement data
-* Department and batch-specific benchmarking
-* Role-specific placement readiness analysis
+* Department-specific benchmarking
+* Batch-specific benchmarking
+* Role-specific placement-readiness analysis
 * Historical placement trend analysis
 * Recruiter and company-level analytics
-* Explainable ML components
+* Explainable machine-learning components
 * Model monitoring and retraining
 * Authentication and role-based access control
-* Student and placement-officer dashboards
+* Separate student and placement-officer dashboards
 * Database integration
 * Automated data ingestion
 * Privacy and consent controls
 * Institution-specific recommendation engines
 * Longitudinal student progress tracking
+* Model fairness and bias monitoring
 
 ---
 
@@ -593,20 +639,52 @@ The system combines:
 
 to support more informed placement preparation.
 
+Machine learning is only one component of the overall system.
+
+The primary value comes from combining transparent analytics, benchmark-based student intelligence, personalized recommendations, and grounded natural-language reporting.
+
 ---
 
 ## ⚖️ Responsible Use
 
-This project should be treated as a decision-support prototype.
+This project should be treated as a **decision-support prototype**.
 
 Placement decisions should never be made solely from the ML estimate, benchmark score, or AI-generated report.
 
-Real-world deployment would require validated institutional data, fairness evaluation, privacy protection, model monitoring, human oversight, and appropriate student-data governance.
+Real-world institutional deployment would require:
+
+* Validated real-world data
+* Fairness and bias evaluation
+* Student privacy protection
+* Appropriate consent mechanisms
+* Model monitoring
+* Human oversight
+* Secure authentication and authorization
+* Institutional data governance
 
 ---
 
-## 📄 License
+## 👩‍💻 Repository
+
+GitHub Repository:
+
+https://github.com/varshavarada/student-placement-intelligence-system
+
+Live Application:
+
+https://student-placement-intelligence-vaidehi.streamlit.app/
+
+---
+
+## 📄 License and Dataset Attribution
 
 The project source code may be licensed according to the repository owner's chosen software license.
 
-The dataset used by the prototype is separately distributed under its stated **CC0 Public Domain** license.
+The dataset used by this prototype is separately distributed as:
+
+**Student Placement Prediction Dataset 2026**
+**Author:** Mansehaj Preet
+**Platform:** Kaggle
+**License:** CC0: Public Domain
+
+The dataset is used for prototype development and demonstration purposes.
