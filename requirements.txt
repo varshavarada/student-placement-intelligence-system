@@ -6,3 +6,4 @@ joblib
 plotly
 python-dotenv
 groq
+openpyxl

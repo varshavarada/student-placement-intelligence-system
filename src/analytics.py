@@ -4,33 +4,68 @@ MIN_GROUP_SIZE = 100
 def get_overall_metrics(df):
     total_students = len(df)
 
-    placed_students = (
-        df["placement_status"] == "Placed"
-    ).sum()
+    placed_students = int(
+        (
+            df["placement_status"]
+            == "Placed"
+        ).sum()
+    )
 
-    not_placed_students = (
-        df["placement_status"] == "Not Placed"
-    ).sum()
+    not_placed_students = int(
+        (
+            df["placement_status"]
+            == "Not Placed"
+        ).sum()
+    )
 
     placement_rate = (
-        placed_students / total_students
-    ) * 100
+        placed_students
+        / total_students
+        * 100
+        if total_students > 0
+        else 0
+    )
 
-    placed_salary = df.loc[
-        df["placement_status"] == "Placed",
-        "salary_package_lpa"
-    ]
+    average_salary = None
+    highest_salary = None
 
-    average_salary = placed_salary.mean()
-    highest_salary = placed_salary.max()
+    if "salary_package_lpa" in df.columns:
+
+        placed_salary = df.loc[
+            (
+                df["placement_status"]
+                == "Placed"
+            ),
+            "salary_package_lpa",
+        ].dropna()
+
+        if not placed_salary.empty:
+            average_salary = (
+                placed_salary.mean()
+            )
+
+            highest_salary = (
+                placed_salary.max()
+            )
 
     return {
-        "total_students": total_students,
-        "placed_students": placed_students,
-        "not_placed_students": not_placed_students,
-        "placement_rate": placement_rate,
-        "average_salary": average_salary,
-        "highest_salary": highest_salary,
+        "total_students":
+            total_students,
+
+        "placed_students":
+            placed_students,
+
+        "not_placed_students":
+            not_placed_students,
+
+        "placement_rate":
+            placement_rate,
+
+        "average_salary":
+            average_salary,
+
+        "highest_salary":
+            highest_salary,
     }
 
 
@@ -46,10 +81,19 @@ def get_skill_comparison(df):
         "internships_count",
     ]
 
+    available_columns = [
+        column
+        for column in skill_columns
+        if column in df.columns
+    ]
+
+    if not available_columns:
+        return None
+
     comparison = (
         df.groupby(
             "placement_status"
-        )[skill_columns]
+        )[available_columns]
         .mean()
     )
 
@@ -57,37 +101,97 @@ def get_skill_comparison(df):
 
 
 def get_branch_analysis(df):
+    if "branch" not in df.columns:
+        return None
+
     branch_analysis = (
-        df.groupby("branch")["placement_status"]
-        .apply(
-            lambda x: (
-                x == "Placed"
-            ).mean() * 100
+        df.groupby(
+            "branch"
         )
-        .sort_values(
-            ascending=False
+        .agg(
+            sample_size=(
+                "placement_status",
+                "size",
+            ),
+
+            placed_students=(
+                "placement_status",
+                lambda x: (
+                    x == "Placed"
+                ).sum(),
+            ),
         )
+        .reset_index()
     )
 
-    return branch_analysis
+    branch_analysis[
+        "placement_rate"
+    ] = (
+        branch_analysis[
+            "placed_students"
+        ]
+        / branch_analysis[
+            "sample_size"
+        ]
+    ) * 100
+
+    return (
+        branch_analysis
+        .sort_values(
+            "placement_rate",
+            ascending=False,
+        )
+        .reset_index(
+            drop=True
+        )
+    )
 
 
 def get_college_tier_analysis(df):
+    if "college_tier" not in df.columns:
+        return None
+
     tier_analysis = (
         df.groupby(
             "college_tier"
-        )["placement_status"]
-        .apply(
-            lambda x: (
-                x == "Placed"
-            ).mean() * 100
         )
-        .sort_values(
-            ascending=False
+        .agg(
+            sample_size=(
+                "placement_status",
+                "size",
+            ),
+
+            placed_students=(
+                "placement_status",
+                lambda x: (
+                    x == "Placed"
+                ).sum(),
+            ),
         )
+        .reset_index()
     )
 
-    return tier_analysis
+    tier_analysis[
+        "placement_rate"
+    ] = (
+        tier_analysis[
+            "placed_students"
+        ]
+        / tier_analysis[
+            "sample_size"
+        ]
+    ) * 100
+
+    return (
+        tier_analysis
+        .sort_values(
+            "placement_rate",
+            ascending=False,
+        )
+        .reset_index(
+            drop=True
+        )
+    )
 
 
 def get_skill_gap_analysis(df):
@@ -105,23 +209,34 @@ def get_skill_gap_analysis(df):
         "hackathons_participated",
     ]
 
+    available_columns = [
+        column
+        for column in skill_columns
+        if column in df.columns
+    ]
+
     placed = df[
-        df["placement_status"] == "Placed"
+        df["placement_status"]
+        == "Placed"
     ]
 
     not_placed = df[
-        df["placement_status"] == "Not Placed"
+        df["placement_status"]
+        == "Not Placed"
     ]
 
     gaps = {}
 
-    for column in skill_columns:
+    for column in available_columns:
+
         placed_average = (
-            placed[column].mean()
+            placed[column]
+            .mean()
         )
 
         not_placed_average = (
-            not_placed[column].mean()
+            not_placed[column]
+            .mean()
         )
 
         gaps[column] = {
@@ -140,34 +255,49 @@ def get_skill_gap_analysis(df):
 
 
 def get_salary_analysis(df):
+    if (
+        "salary_package_lpa"
+        not in df.columns
+    ):
+        return None
+
     placed_students = df[
-        df["placement_status"] == "Placed"
+        df["placement_status"]
+        == "Placed"
     ]
 
     salary = (
         placed_students[
             "salary_package_lpa"
         ]
+        .dropna()
     )
 
+    if salary.empty:
+        return None
+
     return {
-        "average":
+        "average_salary":
             salary.mean(),
 
-        "median":
+        "median_salary":
             salary.median(),
 
-        "minimum":
+        "minimum_salary":
             salary.min(),
 
-        "maximum":
+        "highest_salary":
             salary.max(),
 
-        "q1":
-            salary.quantile(0.25),
+        "q1_salary":
+            salary.quantile(
+                0.25
+            ),
 
-        "q3":
-            salary.quantile(0.75),
+        "q3_salary":
+            salary.quantile(
+                0.75
+            ),
     }
 
 
@@ -175,6 +305,13 @@ def get_work_experience_analysis(
     df,
     min_group_size=MIN_GROUP_SIZE,
 ):
+
+    if (
+        "internships_count"
+        not in df.columns
+    ):
+        return None
+
     grouped = (
         df.groupby(
             "internships_count"
@@ -215,8 +352,14 @@ def get_work_experience_analysis(
         >= min_group_size
     )
 
-    return grouped.sort_values(
-        "internships_count"
+    return (
+        grouped
+        .sort_values(
+            "internships_count"
+        )
+        .reset_index(
+            drop=True
+        )
     )
 
 
@@ -224,6 +367,13 @@ def get_project_analysis(
     df,
     min_group_size=MIN_GROUP_SIZE,
 ):
+
+    if (
+        "projects_count"
+        not in df.columns
+    ):
+        return None
+
     grouped = (
         df.groupby(
             "projects_count"
@@ -264,6 +414,12 @@ def get_project_analysis(
         >= min_group_size
     )
 
-    return grouped.sort_values(
-        "projects_count"
+    return (
+        grouped
+        .sort_values(
+            "projects_count"
+        )
+        .reset_index(
+            drop=True
+        )
     )
