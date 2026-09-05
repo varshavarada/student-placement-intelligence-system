@@ -35,19 +35,12 @@ def _to_number(value):
 
 
 def get_placed_student_benchmarks(df):
-    """
-    Build benchmarks only for supported analytical columns that are
-    actually present and contain usable numeric values.
 
-    This keeps the demo flow unchanged while allowing institution
-    datasets with partial schemas to use the fields they do provide.
-    """
     if "placement_status" not in df.columns:
         return {}
 
     placed_students = df[
-        df["placement_status"].astype(str).str.strip().str.lower()
-        == "placed"
+        df["placement_status"].astype(str).str.strip().str.lower() == "placed"
     ].copy()
 
     if placed_students.empty:
@@ -56,30 +49,21 @@ def get_placed_student_benchmarks(df):
     benchmarks = {}
 
     for column in BENCHMARK_COLUMNS:
+
         if column not in placed_students.columns:
             continue
 
-        values = pd.to_numeric(
+        numeric_values = pd.to_numeric(
             placed_students[column],
             errors="coerce",
         ).dropna()
 
-        if values.empty:
+        if numeric_values.empty:
             continue
-
-        mean_value = float(values.mean())
-        std_value = float(values.std()) if len(values) > 1 else 0.0
-
-        if not math.isfinite(mean_value):
-            continue
-
-        if not math.isfinite(std_value):
-            std_value = 0.0
 
         benchmarks[column] = {
-            "mean": mean_value,
-            "std": std_value,
-            "count": int(len(values)),
+            "mean": numeric_values.mean(),
+            "std": numeric_values.std(),
         }
 
     return benchmarks
