@@ -1,3 +1,4 @@
+
 import pandas as pd
 import joblib
 
@@ -321,10 +322,23 @@ def get_or_train_model(df):
 
     if saved_model is not None:
 
-        return {
-            "pipeline": saved_model,
-            "source": "saved",
-        }
+        # Support both:
+        # 1. a directly saved sklearn pipeline
+        # 2. an older dictionary-style saved object
+        if isinstance(saved_model, dict):
+            saved_pipeline = (
+                saved_model.get("pipeline")
+                or saved_model.get("best_pipeline")
+                or saved_model.get("model")
+            )
+        else:
+            saved_pipeline = saved_model
+
+        if saved_pipeline is not None:
+            return {
+                "pipeline": saved_pipeline,
+                "source": "saved",
+            }
 
     ml_result = compare_models(df)
 
@@ -347,6 +361,34 @@ def predict_student_probability(
     pipeline,
     student,
 ):
+
+    # get_or_train_model() returns a dictionary
+    # containing the actual sklearn pipeline.
+    if isinstance(pipeline, dict):
+        pipeline = (
+            pipeline.get("pipeline")
+            or pipeline.get("best_pipeline")
+            or pipeline.get("model")
+        )
+
+    if pipeline is None:
+        raise ValueError(
+            "Placement model pipeline is unavailable."
+        )
+
+    # Extra protection in case an older saved
+    # object contains another dictionary wrapper.
+    if isinstance(pipeline, dict):
+        pipeline = (
+            pipeline.get("pipeline")
+            or pipeline.get("best_pipeline")
+            or pipeline.get("model")
+        )
+
+    if pipeline is None:
+        raise ValueError(
+            "A valid placement prediction pipeline could not be loaded."
+        )
 
     excluded_columns = [
         "student_id",
@@ -387,3 +429,4 @@ def predict_student_probability(
         "placement_probability":
             probability * 100,
     }
+
