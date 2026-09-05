@@ -91,6 +91,18 @@ except Exception:
 
 
 try:
+    from institution_report_generator import (
+        generate_institution_student_report,
+    )
+
+    INSTITUTION_REPORT_AVAILABLE = True
+
+except Exception as error:
+    print(f"Institution report import error: {error}")
+    INSTITUTION_REPORT_AVAILABLE = False
+
+
+try:
     from chatbot import ask_placement_chatbot
 
     CHATBOT_AVAILABLE = True
@@ -110,6 +122,36 @@ st.set_page_config(
     ),
     page_icon="🎓",
     layout="wide",
+)
+
+
+# ==================================================
+# UI SHELL
+# ==================================================
+
+st.markdown(
+    """
+    <style>
+    [data-testid="stSidebar"],
+    [data-testid="stSidebarCollapsedControl"],
+    [data-testid="stSidebarCollapseButton"] {
+        display: none !important;
+    }
+
+    .block-container {
+        padding-top: 1.5rem;
+        padding-bottom: 2.5rem;
+        max-width: 1400px;
+    }
+
+    div[data-testid="stButton"] > button {
+        min-height: 2.75rem;
+        border-radius: 0.65rem;
+        font-weight: 600;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 
@@ -354,25 +396,33 @@ if "salary_conversion_message" not in (
 
 
 # ==================================================
-# SIDEBAR
+# HEADER + TOP DATA SOURCE
 # ==================================================
 
-st.sidebar.title(
-    "🎓 Placement Intelligence"
+st.title(
+    "🎓 Student Placement Intelligence System"
 )
 
-st.sidebar.markdown(
-    "### 📂 Data Source"
+st.caption(
+    "Analyze placement outcomes, understand student readiness and "
+    "explore institutional placement data through grounded AI insights."
 )
 
+data_panel = st.container(border=True)
+source_col, active_col = data_panel.columns([3, 2])
 
-data_source = st.sidebar.radio(
-    "Choose dataset",
-    [
-        "Demo Dataset",
-        "Upload Institution Data",
-    ],
-)
+with source_col:
+    st.markdown("**📂 Data Source**")
+    data_source = st.radio(
+        "Choose dataset",
+        [
+            "Demo Dataset",
+            "Upload Institution Data",
+        ],
+        horizontal=True,
+        key="top_data_source",
+        label_visibility="collapsed",
+    )
 
 
 # ==================================================
@@ -406,14 +456,12 @@ if data_source == "Demo Dataset":
 
 else:
 
-    st.sidebar.caption(
-        "Upload institution placement data. "
-        "Column names do not need to match "
-        "the demo dataset."
+    data_panel.caption(
+        "Upload CSV/XLSX placement data; column names can differ from the demo schema."
     )
 
     uploaded_file = (
-        st.sidebar.file_uploader(
+        data_panel.file_uploader(
             "Upload Placement Data",
             type=[
                 "csv",
@@ -433,11 +481,11 @@ else:
             )
 
         except Exception as error:
-            st.sidebar.error(
+            data_panel.error(
                 "Unable to read the uploaded file."
             )
 
-            st.sidebar.exception(error)
+            data_panel.exception(error)
             uploaded_df = None
 
 
@@ -449,11 +497,11 @@ else:
                 )
             )
 
-            st.sidebar.success(
+            data_panel.success(
                 "File loaded successfully."
             )
 
-            st.sidebar.caption(
+            data_panel.caption(
                 f"{len(uploaded_df):,} rows • "
                 f"{len(uploaded_df.columns)} columns"
             )
@@ -468,11 +516,11 @@ else:
             )
 
 
-            st.sidebar.markdown(
+            data_panel.markdown(
                 "### 🔗 Column Mapping"
             )
 
-            st.sidebar.caption(
+            data_panel.caption(
                 "We suggested mappings "
                 "automatically. Review them "
                 "before using the dataset."
@@ -496,7 +544,7 @@ else:
             # REQUIRED FIELDS
             # ==========================================
 
-            st.sidebar.markdown(
+            data_panel.markdown(
                 "**Required Fields**"
             )
 
@@ -526,7 +574,7 @@ else:
 
 
                 selection = (
-                    st.sidebar.selectbox(
+                    data_panel.selectbox(
                         (
                             f"{DISPLAY_NAMES.get(canonical_column, canonical_column)} *"
                         ),
@@ -551,7 +599,7 @@ else:
             # OPTIONAL FIELDS
             # ==========================================
 
-            with st.sidebar.expander(
+            with data_panel.expander(
                 "Optional Fields"
             ):
 
@@ -620,12 +668,12 @@ else:
 
             if salary_source_column:
 
-                st.sidebar.markdown(
+                data_panel.markdown(
                     "### 💰 Salary Format"
                 )
 
                 salary_unit = (
-                    st.sidebar.selectbox(
+                    data_panel.selectbox(
                         "Salary Unit",
                         [
                             "LPA",
@@ -667,7 +715,7 @@ else:
                         median_salary > 1000
                         and salary_unit == "LPA"
                     ):
-                        st.sidebar.warning(
+                        data_panel.warning(
                             "These salary values look "
                             "large for LPA. If this "
                             "column stores annual salary "
@@ -680,7 +728,7 @@ else:
             # MAPPING SUMMARY
             # ==========================================
 
-            with st.sidebar.expander(
+            with data_panel.expander(
                 "Mapping Summary"
             ):
 
@@ -723,7 +771,7 @@ else:
             # VALIDATE BUTTON
             # ==========================================
 
-            if st.sidebar.button(
+            if data_panel.button(
                 "Validate & Use Dataset",
                 type="primary",
                 use_container_width=True,
@@ -753,7 +801,7 @@ else:
                         in missing_mapping
                     ]
 
-                    st.sidebar.error(
+                    data_panel.error(
                         "Please map all required "
                         "fields: "
                         + ", ".join(
@@ -783,7 +831,7 @@ else:
 
                     if duplicated_sources:
 
-                        st.sidebar.error(
+                        data_panel.error(
                             "The same uploaded column "
                             "cannot be mapped to "
                             "multiple system fields: "
@@ -829,13 +877,13 @@ else:
 
                         if errors:
 
-                            st.sidebar.error(
+                            data_panel.error(
                                 "Dataset validation "
                                 "failed."
                             )
 
                             for error in errors:
-                                st.sidebar.error(
+                                data_panel.error(
                                     error
                                 )
 
@@ -878,7 +926,7 @@ else:
                                 )
 
 
-                            st.sidebar.success(
+                            data_panel.success(
                                 "Dataset validated "
                                 "successfully."
                             )
@@ -901,33 +949,23 @@ data_mode = (
 )
 
 
-st.sidebar.markdown("---")
-
-st.sidebar.markdown(
-    "### Active Dataset"
-)
-
-st.sidebar.write(
-    active_dataset_name
-)
-
-st.sidebar.caption(
-    f"{len(active_df):,} students"
-)
-
+with active_col:
+    st.markdown("**📊 Active Dataset**")
+    st.write(
+        f"{active_dataset_name} · "
+        f"{len(active_df):,} students"
+    )
 
 if (
     st.session_state.salary_conversion_message
 ):
-    st.sidebar.info(
+    st.info(
         st.session_state.salary_conversion_message
     )
 
-
 if st.session_state.data_warnings:
-
-    with st.sidebar.expander(
-        "Data Quality Warnings"
+    with st.expander(
+        "⚠️ Data Quality Warnings"
     ):
         for warning in (
             st.session_state.data_warnings
@@ -936,55 +974,47 @@ if st.session_state.data_warnings:
 
 
 # ==================================================
-# NAVIGATION
+# TOP NAVIGATION
 # ==================================================
 
-st.sidebar.markdown("---")
+if "current_page" not in st.session_state:
+    st.session_state.current_page = "Overview"
 
-st.sidebar.markdown(
-    "## Navigation"
-)
+nav_pages = [
+    "Overview",
+    "Student Intelligence",
+    "Resume & Job Match",
+    "Placement Copilot",
+]
 
-page = st.sidebar.radio(
-    "Go to",
-    [
-        "Overview",
-        "Student Intelligence",
-        "Resume & Job Match",
-        "Placement Copilot",
-    ],
-)
+nav_cols = st.columns(len(nav_pages))
 
+for col, nav_page in zip(nav_cols, nav_pages):
+    with col:
+        is_active = (
+            st.session_state.current_page == nav_page
+        )
 
-# ==================================================
-# HEADER
-# ==================================================
+        if st.button(
+            nav_page,
+            key=f"top_nav_{nav_page}",
+            use_container_width=True,
+            type="primary" if is_active else "secondary",
+        ):
+            st.session_state.current_page = nav_page
+            st.rerun()
 
-st.title(
-    "🎓 Student Placement Intelligence System"
-)
-
-st.caption(
-    "Analyze placement outcomes, understand student readiness and "
-    "explore institutional placement data through grounded AI insights."
-)
+page = st.session_state.current_page
 
 
 if data_mode == "Demo Dataset":
-
-    st.info(
-        "🧪 Current Data Source: Demo dataset. "
-        "The prototype uses synthetic placement data."
+    st.caption(
+        "🧪 Demo mode uses synthetic placement data for prototype evaluation."
     )
-
 else:
-
-    st.info(
-        f"🏫 Current Data Source: "
-        f"{active_dataset_name} "
-        f"({len(active_df):,} students). "
-        f"Analytics are being calculated from "
-        f"the mapped institutional dataset."
+    st.caption(
+        f"🏫 Institutional dataset active: {active_dataset_name}. "
+        "Analytics use the validated mapped fields available in this dataset."
     )
 
 
@@ -1571,58 +1601,35 @@ elif page == "Student Intelligence":
         "Student Intelligence"
     )
 
-
     if active_df.empty:
-
         st.warning(
             "The active dataset is empty."
         )
-
         st.stop()
 
-
     student_ids = (
-        active_df[
-            "student_id"
-        ]
+        active_df["student_id"]
         .astype(str)
         .tolist()
     )
 
-
-    selected_student_id = (
-        st.selectbox(
-            "Select Student",
-            student_ids,
-        )
+    selected_student_id = st.selectbox(
+        "Select Student",
+        student_ids,
     )
 
-
-    student_matches = (
-        active_df[
-            active_df[
-                "student_id"
-            ].astype(str)
-            == str(
-                selected_student_id
-            )
-        ]
-    )
-
+    student_matches = active_df[
+        active_df["student_id"].astype(str)
+        == str(selected_student_id)
+    ]
 
     if student_matches.empty:
-
         st.error(
             "Student could not be found."
         )
-
         st.stop()
 
-
-    student = (
-        student_matches.iloc[0]
-    )
-
+    student = student_matches.iloc[0]
 
     # ==============================================
     # PROFILE
@@ -1632,19 +1639,13 @@ elif page == "Student Intelligence":
         "Student Profile"
     )
 
-
-    profile_columns = (
-        get_student_profile_columns(
-            active_df
-        )
+    profile_columns = get_student_profile_columns(
+        active_df
     )
-
 
     profile_data = {}
 
-
     for column in profile_columns:
-
         profile_data[
             DISPLAY_NAMES.get(
                 column,
@@ -1655,17 +1656,10 @@ elif page == "Student Intelligence":
             student[column],
         )
 
-
     profile_df = pd.DataFrame(
-        list(
-            profile_data.items()
-        ),
-        columns=[
-            "Field",
-            "Value",
-        ],
+        list(profile_data.items()),
+        columns=["Field", "Value"],
     )
-
 
     st.dataframe(
         profile_df,
@@ -1673,389 +1667,326 @@ elif page == "Student Intelligence":
         use_container_width=True,
     )
 
-
     # ==============================================
-    # CHECK INTELLIGENCE AVAILABILITY
+    # AVAILABLE-FIELD INTELLIGENCE
     # ==============================================
 
     missing_intelligence_features = [
         feature
-        for feature
-        in INTELLIGENCE_REQUIRED_FEATURES
-        if feature
-        not in active_df.columns
+        for feature in INTELLIGENCE_REQUIRED_FEATURES
+        if feature not in active_df.columns
     ]
 
+    available_intelligence_features = [
+        feature
+        for feature in INTELLIGENCE_REQUIRED_FEATURES
+        if feature in active_df.columns
+    ]
+
+    readable_missing = [
+        DISPLAY_NAMES.get(feature, feature)
+        for feature in missing_intelligence_features
+    ]
 
     if missing_intelligence_features:
-
         st.info(
-            "Complete student benchmark "
-            "intelligence is unavailable "
-            "for this dataset because some "
-            "required analytical fields "
-            "were not mapped."
+            "Partial student intelligence is being generated from the "
+            "analytical fields available in this dataset. Missing fields "
+            "are not estimated or filled with assumed values."
         )
-
-
-        readable_missing = [
-            DISPLAY_NAMES.get(
-                feature,
-                feature,
-            )
-            for feature
-            in missing_intelligence_features
-        ]
-
-
         st.write(
-            "**Missing fields:** "
-            + ", ".join(
-                readable_missing
-            )
+            "**Unavailable analytical fields:** "
+            + ", ".join(readable_missing)
         )
 
+    benchmarks = get_placed_student_benchmarks(
+        active_df
+    )
 
-        st.caption(
-            "The uploaded dataset is still "
-            "usable for cohort analytics and "
-            "the student profile above. "
-            "Unsupported intelligence modules "
-            "are disabled instead of "
-            "estimating missing information."
+    analysis = analyze_student(
+        student,
+        benchmarks,
+    )
+
+    recommendations = generate_recommendations(
+        analysis
+    )
+
+    # ==============================================
+    # COMPARISON
+    # ==============================================
+
+    st.subheader(
+        "Benchmark Comparison"
+    )
+
+    comparison_rows = []
+
+    for feature, comparison in analysis[
+        "comparisons"
+    ].items():
+        comparison_rows.append(
+            {
+                "Feature": DISPLAY_NAMES.get(
+                    feature,
+                    feature,
+                ),
+                "Student Value": round(
+                    comparison["student_value"],
+                    2,
+                ),
+                "Placed Average": round(
+                    comparison["placed_average"],
+                    2,
+                ),
+                "Difference": round(
+                    comparison["raw_difference"],
+                    2,
+                ),
+            }
         )
 
-
-    else:
-
-        benchmarks = (
-            get_placed_student_benchmarks(
-                active_df
-            )
-        )
-
-
-        analysis = analyze_student(
-            student,
-            benchmarks,
-        )
-
-
-        recommendations = (
-            generate_recommendations(
-                analysis
-            )
-        )
-
-
-        # ==========================================
-        # COMPARISON
-        # ==========================================
-
-        st.subheader(
-            "Benchmark Comparison"
-        )
-
-
-        comparison_rows = []
-
-
-        for feature, comparison in (
-            analysis[
-                "comparisons"
-            ].items()
-        ):
-
-            comparison_rows.append(
-                {
-                    "Feature":
-                        DISPLAY_NAMES.get(
-                            feature,
-                            feature,
-                        ),
-
-                    "Student Value":
-                        round(
-                            comparison[
-                                "student_value"
-                            ],
-                            2,
-                        ),
-
-                    "Placed Average":
-                        round(
-                            comparison[
-                                "placed_average"
-                            ],
-                            2,
-                        ),
-
-                    "Difference":
-                        round(
-                            comparison[
-                                "raw_difference"
-                            ],
-                            2,
-                        ),
-                }
-            )
-
-
+    if comparison_rows:
         st.dataframe(
-            pd.DataFrame(
-                comparison_rows
-            ),
+            pd.DataFrame(comparison_rows),
             hide_index=True,
             use_container_width=True,
         )
-
-
-        # ==========================================
-        # STRENGTHS + IMPROVEMENTS
-        # ==========================================
-
-        strength_col, improvement_col = (
-            st.columns(2)
+    else:
+        st.info(
+            "No valid placed-student benchmark comparison could be "
+            "calculated from the available analytical fields."
         )
 
+    # ==============================================
+    # STRENGTHS + IMPROVEMENTS
+    # ==============================================
 
-        with strength_col:
+    strength_col, improvement_col = st.columns(2)
 
-            st.subheader(
-                "Strengths"
-            )
-
-            if analysis["strengths"]:
-
-                for item in (
-                    analysis["strengths"]
-                ):
-                    st.success(
-                        item["feature"]
-                    )
-
-            else:
-                st.info(
-                    "No strong benchmark "
-                    "advantages were detected."
-                )
-
-
-        with improvement_col:
-
-            st.subheader(
-                "Improvement Areas"
-            )
-
-            if (
-                analysis[
-                    "improvement_areas"
-                ]
-            ):
-
-                for item in (
-                    analysis[
-                        "improvement_areas"
-                    ]
-                ):
-                    st.warning(
-                        item["feature"]
-                    )
-
-            else:
-                st.info(
-                    "No major benchmark "
-                    "gaps were detected."
-                )
-
-
-        # ==========================================
-        # RECOMMENDATIONS
-        # ==========================================
-
+    with strength_col:
         st.subheader(
-            "Preparation Recommendations"
+            "Strengths"
         )
 
-
-        if recommendations:
-
-            for recommendation in (
-                recommendations
-            ):
-                st.write(
-                    f"• {recommendation}"
+        if analysis["strengths"]:
+            for item in analysis["strengths"]:
+                st.success(
+                    item["feature"]
                 )
-
         else:
-
             st.info(
-                "No additional recommendations "
-                "were generated."
+                "No strong benchmark advantages were detected "
+                "from the available fields."
             )
 
+    with improvement_col:
+        st.subheader(
+            "Improvement Areas"
+        )
 
-        # ==========================================
-        # DEMO-ONLY ML + AI REPORT
-        # ==========================================
+        if analysis["improvement_areas"]:
+            for item in analysis[
+                "improvement_areas"
+            ]:
+                st.warning(
+                    item["feature"]
+                )
+        else:
+            st.info(
+                "No major benchmark gaps were detected "
+                "from the available fields."
+            )
 
-        if (
-            data_mode
-            == "Demo Dataset"
-        ):
+    # ==============================================
+    # RECOMMENDATIONS
+    # ==============================================
 
-            prediction = None
+    st.subheader(
+        "Preparation Recommendations"
+    )
 
+    if recommendations:
+        for recommendation in recommendations:
+            st.write(
+                f"• {recommendation}"
+            )
+    else:
+        st.info(
+            "No additional recommendations were generated "
+            "from the available benchmark gaps."
+        )
 
-            if ML_AVAILABLE:
+    # ==============================================
+    # DEMO DATASET: ML + EXISTING REPORT
+    # ==============================================
 
-                try:
+    if data_mode == "Demo Dataset":
+        prediction = None
 
-                    pipeline = (
-                        get_or_train_model(
-                            active_df
-                        )
-                    )
+        if ML_AVAILABLE:
+            try:
+                pipeline = get_or_train_model(
+                    active_df
+                )
 
-                    prediction = (
-                        predict_student_probability(
-                            pipeline,
-                            student,
-                        )
-                    )
-
-
-                    st.subheader(
-                        "ML Placement Estimate"
-                    )
-
-
-                    pred_col1, pred_col2 = (
-                        st.columns(2)
-                    )
-
-
-                    pred_col1.metric(
-                        "Model Classification",
-                        prediction[
-                            "prediction"
-                        ],
-                    )
-
-
-                    pred_col2.metric(
-                        "Placement Estimate",
-                        (
-                            f"{prediction['placement_probability']:.2f}%"
-                        ),
-                    )
-
-
-                    st.caption(
-                        "This is a prototype "
-                        "model estimate trained "
-                        "on synthetic data. "
-                        "It is not a guaranteed "
-                        "real-world placement "
-                        "probability."
-                    )
-
-
-                except Exception as error:
-
-                    st.warning(
-                        "ML estimate is "
-                        "temporarily unavailable."
-                    )
-
-                    st.caption(
-                        str(error)
-                    )
-
-
-            if (
-                REPORT_AVAILABLE
-                and prediction
-                is not None
-            ):
+                prediction = predict_student_probability(
+                    pipeline,
+                    student,
+                )
 
                 st.subheader(
-                    "Placement Readiness Report"
+                    "ML Placement Estimate"
                 )
 
+                pred_col1, pred_col2 = st.columns(2)
 
-                try:
+                pred_col1.metric(
+                    "Model Classification",
+                    prediction["prediction"],
+                )
 
-                    report_result = (
-                        generate_student_report(
-                            student,
-                            analysis,
-                            recommendations,
-                            prediction,
-                        )
-                    )
+                pred_col2.metric(
+                    "Placement Estimate",
+                    f"{prediction['placement_probability']:.2f}%",
+                )
 
+                st.caption(
+                    "This is a prototype model estimate trained on "
+                    "synthetic data. It is not a guaranteed real-world "
+                    "placement probability."
+                )
 
-                    if isinstance(
-                        report_result,
-                        dict,
-                    ):
+            except Exception as error:
+                st.warning(
+                    "ML estimate is temporarily unavailable."
+                )
+                st.caption(
+                    str(error)
+                )
 
-                        st.write(
-                            report_result.get(
-                                "report",
-                                "",
-                            )
-                        )
-
-
-                        source = (
-                            report_result.get(
-                                "source"
-                            )
-                        )
-
-
-                        if source:
-                            st.caption(
-                                f"Report source: "
-                                f"{source}"
-                            )
-
-                    else:
-
-                        st.write(
-                            report_result
-                        )
-
-
-                except Exception as error:
-
-                    st.warning(
-                        "The natural-language "
-                        "report is temporarily "
-                        "unavailable."
-                    )
-
-                    st.caption(
-                        str(error)
-                    )
-
-
-        else:
-
-            st.info(
-                "ML placement estimation and "
-                "the current AI report are "
-                "disabled for institution-uploaded "
-                "datasets. The existing model was "
-                "trained on the demo synthetic "
-                "schema and should not be applied "
-                "to unrelated institutional data "
-                "without compatible features and "
-                "validation."
+        if REPORT_AVAILABLE and prediction is not None:
+            st.subheader(
+                "Placement Readiness Report"
             )
 
+            try:
+                report_result = generate_student_report(
+                    student,
+                    analysis,
+                    recommendations,
+                    prediction,
+                )
+
+                if isinstance(report_result, dict):
+                    st.write(
+                        report_result.get(
+                            "report",
+                            "",
+                        )
+                    )
+
+                    source = report_result.get(
+                        "source"
+                    )
+
+                    if source:
+                        st.caption(
+                            f"Report source: {source}"
+                        )
+                else:
+                    st.write(
+                        report_result
+                    )
+
+            except Exception as error:
+                st.warning(
+                    "The natural-language report is temporarily unavailable."
+                )
+                st.caption(
+                    str(error)
+                )
+
+    # ==============================================
+    # INSTITUTION DATASET: NO ML, GROUNDED REPORT
+    # ==============================================
+
+    else:
+        st.subheader(
+            "Machine Learning Placement Estimate"
+        )
+
+        st.info(
+            "ML placement estimation is intentionally disabled for "
+            "institution-uploaded datasets. The current saved model was "
+            "trained on the synthetic demo dataset and is not applied to "
+            "unrelated institutional data without compatible training "
+            "and validation."
+        )
+
+        st.subheader(
+            "Placement Readiness Report"
+        )
+
+        if not available_intelligence_features:
+            st.info(
+                "A benchmark-based readiness report cannot be generated "
+                "because none of the supported analytical fields were mapped. "
+                "The student profile above remains available."
+            )
+
+        elif not analysis["comparisons"]:
+            st.info(
+                "A benchmark-based readiness report cannot be generated "
+                "because valid placed-student comparisons are unavailable "
+                "for the mapped analytical fields."
+            )
+
+        elif INSTITUTION_REPORT_AVAILABLE:
+            try:
+                report_result = generate_institution_student_report(
+                    student=student,
+                    analysis=analysis,
+                    recommendations=recommendations,
+                    missing_features=readable_missing,
+                    dataset_name=active_dataset_name,
+                )
+
+                if isinstance(report_result, dict):
+                    st.write(
+                        report_result.get(
+                            "report",
+                            "",
+                        )
+                    )
+
+                    source = report_result.get(
+                        "source"
+                    )
+
+                    if source:
+                        st.caption(
+                            f"Report source: {source}"
+                        )
+                else:
+                    st.write(
+                        report_result
+                    )
+
+            except Exception as error:
+                st.warning(
+                    "The institution-data readiness report is "
+                    "temporarily unavailable."
+                )
+                st.caption(
+                    str(error)
+                )
+
+        else:
+            st.warning(
+                "Institution-data report generation is unavailable "
+                "because the report module could not be loaded."
+            )
 
 
 # ==================================================
