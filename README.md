@@ -1,237 +1,202 @@
-# 🎓 Student Placement Intelligence System
+# Student Placement Intelligence System
 
-A data-driven placement analytics and student intelligence platform that transforms student placement data into meaningful analytics, benchmark comparisons, personalized preparation recommendations, machine-learning estimates, and AI-generated placement-readiness reports.
+A Streamlit-based placement analytics project built to make student placement data easier to understand and use.
 
-## 🚀 Live Demo
+The system analyzes placement data, compares individual students with placement benchmarks, highlights areas that may need improvement, gives preparation suggestions, supports institutional dataset uploads, answers placement-related questions through a chatbot, and compares resume skills with job-description requirements.
 
-**Try the deployed application:**
+## Live Demo
 
 https://student-placement-intelligence-vaidehi.streamlit.app/
 
-> **Important:** This project currently uses a **synthetic student placement dataset**. Analytics, recommendations, and machine-learning outputs are intended for demonstration and decision-support purposes and must not be interpreted as guaranteed real-world placement outcomes.
+> The default dataset used in this project is synthetic. The results are intended for project demonstration and analysis and should not be treated as guaranteed real-world placement outcomes.
 
 ---
 
-## 📌 Problem Statement
+## Why I Built This Project
 
-Educational institutions collect academic, aptitude, technical, communication, project, internship, and placement-related student data.
+Colleges collect a lot of student information such as CGPA, aptitude scores, coding skills, communication scores, projects, internships and placement results.
 
-However, raw student data alone does not provide clear answers to questions such as:
+The problem is that collecting this information does not automatically make it useful.
 
-* What patterns exist among placed and non-placed students?
-* Which areas of a student's profile are stronger or weaker compared with placement benchmarks?
-* What preparation areas should a student prioritize?
-* How can placement information be presented in an understandable and actionable form?
+It can still be difficult to understand:
 
-Manually analyzing large student datasets is also time-consuming and makes consistent student-level evaluation difficult.
+* how placed and non-placed students differ,
+* where an individual student stands compared with placed students,
+* which areas a student should focus on,
+* what trends are visible in placement data,
+* and how well a student's skills match a particular job description.
 
-The **Student Placement Intelligence System** addresses this problem by transforming placement data into analytics, benchmark-based student intelligence, personalized recommendations, machine-learning estimates, and grounded AI-generated reports.
-
----
-
-## 🎯 Project Objectives
-
-The system aims to:
-
-* Analyze overall placement performance.
-* Compare placed and non-placed student profiles.
-* Identify placement-related patterns in the dataset.
-* Analyze salary distributions for placed students.
-* Benchmark individual students against placed-student averages.
-* Identify meaningful strengths and priority improvement areas.
-* Generate personalized preparation recommendations.
-* Produce a prototype machine-learning placement estimate.
-* Generate natural-language placement-readiness reports using an LLM.
-* Present results through an interactive Streamlit dashboard.
+I built this project to bring these different tasks together in one application instead of treating placement data as only a collection of rows and columns.
 
 ---
 
-## 🏗️ System Architecture
+## Main Features
+
+The application currently has four main sections:
+
+* **Overview**
+* **Student Intelligence**
+* **Resume & Job Match**
+* **Placement Copilot**
+
+It also supports uploading institution datasets in addition to the built-in demo dataset.
+
+---
+
+## Overview
+
+The Overview page provides dataset-level placement analysis.
+
+Depending on the columns available in the active dataset, it can show:
+
+* total students,
+* placed and non-placed students,
+* placement rate,
+* salary statistics,
+* placement-status distribution,
+* branch-wise analysis,
+* college-tier analysis,
+* internship trends,
+* project trends,
+* and placed vs non-placed comparisons.
+
+The dashboard does not treat every difference as an important finding. Small differences are shown carefully because they may not represent meaningful patterns.
+
+The trends shown here describe associations in the dataset. They do not prove that a particular feature caused a placement outcome.
+
+### Low-Sample Groups
+
+Internship and project analysis also considers group size.
+
+Groups containing fewer than **100 students** are treated as low-sample groups and are not used as strong trend evidence.
+
+This helps avoid misleading conclusions from very small groups.
+
+---
+
+## Student Intelligence
+
+The Student Intelligence page focuses on an individual student.
+
+After selecting a student ID, the system can show:
+
+* student profile,
+* comparison with placed-student benchmarks,
+* strengths,
+* improvement areas,
+* preparation recommendations,
+* a machine-learning estimate for the demo dataset,
+* and a placement-readiness report.
+
+### Benchmarking Logic
+
+Student values are compared with averages calculated from placed students.
 
 ```text
-Student Placement Dataset
-          │
-          ▼
-    Data Ingestion
-          │
-          ▼
-Data Validation & Analysis
-          │
-          ├──────────────► Placement Analytics
-          │
-          ├──────────────► Salary Analytics
-          │
-          └──────────────► Experience Trend Analysis
-          │
-          ▼
- Student Benchmarking
-          │
-          ▼
-Strength / Improvement Detection
-          │
-          ▼
-Personalized Recommendations
-          │
-          ├──────────────► Machine Learning Estimate
-          │
-          └──────────────► Grounded LLM Report
-          │
-          ▼
-   Streamlit Dashboard
+Difference >= +0.25  → Strength
+
+Difference <= -0.25  → Improvement Area
+
+Between -0.25 and +0.25  → Neutral
 ```
 
-The architecture deliberately separates deterministic analytics from generative AI.
+The neutral range prevents very small differences from being labelled as strengths or weaknesses.
 
-The LLM does not independently calculate placement statistics. It receives already-computed student information, benchmark comparisons, recommendations, and the ML estimate and converts them into a readable placement-readiness report.
+### Preparation Recommendations
 
----
+Recommendations are based on the improvement areas identified for the student.
 
-## ✨ Core Features
+Depending on the profile, they may focus on:
 
-### 1. Placement Analytics
+* coding,
+* aptitude,
+* communication,
+* logical reasoning,
+* mock interviews,
+* projects,
+* internships,
+* certifications,
+* and GitHub activity.
 
-The system calculates:
+The recommendation logic also considers existing strengths.
 
-* Total number of students
-* Number of placed students
-* Number of non-placed students
-* Overall placement rate
-* Average salary package
-* Highest salary package
-
----
-
-### 2. Placed vs Non-Placed Comparison
-
-The system compares average values across attributes such as:
-
-* CGPA
-* Coding skill
-* Aptitude
-* Communication
-* Logical reasoning
-* Mock interview performance
-* Projects
-* Internships
-
-This helps identify differences present in the dataset without claiming that those differences cause placement outcomes.
+For example, if project experience is already strong but GitHub activity is weak, the system can suggest documenting and publishing existing projects instead of simply recommending more projects.
 
 ---
 
-### 3. Branch and College-Tier Analysis
+## Institution Dataset Upload
 
-Placement rates are analyzed across:
+The application is not limited to the built-in demo dataset.
 
-* Academic branches
-* College tiers
-
-In the current synthetic dataset, these differences are relatively small. The dashboard therefore warns users not to over-interpret minor differences.
-
----
-
-### 4. Salary Analytics
-
-For placed students, the system calculates:
-
-* Mean salary
-* Median salary
-* Minimum salary
-* Maximum salary
-* 25th percentile
-* 75th percentile
-
-A salary distribution visualization is also provided.
-
----
-
-### 5. Internship and Project Trend Analysis
-
-The system analyzes placement rates across different internship and project counts.
-
-To reduce misleading conclusions from very small groups, each group includes:
-
-* Sample size
-* Number of placed students
-* Placement rate
-* Reliability flag
-
-Groups containing fewer than **100 students** are treated as low-sample groups and excluded from the main trend visualization.
-
-For example, a very small group showing a high placement rate is not automatically presented as a reliable general trend.
-
-These analyses represent **associations within the synthetic dataset and not causal relationships**.
-
----
-
-## 🧠 Student Intelligence
-
-The system provides student-level analysis by comparing an individual student's profile with benchmarks calculated from placed students.
-
-The comparison includes:
-
-* CGPA
-* Coding skill
-* Aptitude
-* Communication
-* Logical reasoning
-* Mock interview performance
-* Projects
-* Internships
-* Certifications
-* GitHub repositories
-
-### Benchmark Method
-
-For each feature, the system calculates a standardized difference relative to the placed-student benchmark.
-
-To prevent insignificant differences from being presented as meaningful:
+Users can choose between:
 
 ```text
-Standardized Difference >= +0.25 → Strength
-
-Standardized Difference <= -0.25 → Improvement Area
-
-Between -0.25 and +0.25 → Neutral
+Demo Dataset
+Upload Institution Data
 ```
 
-This creates a neutral zone around the benchmark and prevents very small differences from being unnecessarily classified.
+Currently supported upload formats are:
+
+* CSV
+* XLSX
+
+### Column Mapping
+
+Different colleges may use different names for the same information, so the application includes a flexible mapping process.
+
+It supports:
+
+* automatic column detection,
+* manual mapping,
+* required-field checks,
+* optional fields,
+* duplicate mapping checks,
+* salary-unit selection,
+* and validation before the dataset becomes active.
+
+The minimum required fields are:
+
+```text
+Student ID
+Placement Status
+```
+
+Other analytical fields are optional.
+
+If a field required for a particular analysis is missing, that feature is disabled instead of guessing a value.
+
+### Salary Handling
+
+Uploaded datasets may store salary in different units.
+
+The application currently supports:
+
+* LPA,
+* Annual INR,
+* Monthly INR.
+
+The user selects the correct unit instead of the system making an automatic assumption.
+
+### ML Safety for Uploaded Data
+
+The saved machine-learning model was trained on the synthetic demo dataset.
+
+Because another institution's data may have a different distribution, I do not automatically apply the demo-trained model to uploaded institutional datasets.
+
+I preferred disabling the prediction in that case rather than showing a number that could be misleading.
 
 ---
 
-## 🎯 Personalized Recommendations
+## Machine Learning
 
-Recommendations are generated from the student's identified improvement areas.
-
-Depending on the student's profile, recommendations may include:
-
-* Improving coding through practical development
-* Practicing quantitative aptitude
-* Strengthening communication
-* Practicing logical reasoning
-* Increasing mock interview preparation
-* Improving project documentation
-* Gaining practical internship exposure
-* Publishing and documenting existing projects on GitHub
-* Completing relevant certifications
-
-Recommendations are designed to respect existing strengths.
-
-For example, if project experience is already a strength but GitHub presence is weak, the system prioritizes publishing and documenting existing projects instead of automatically recommending more projects.
-
----
-
-## 🤖 Machine Learning Component
-
-The project evaluates multiple machine-learning approaches for placement estimation.
-
-Models evaluated include:
+I tested four models for placement estimation:
 
 * Logistic Regression
 * Random Forest
 * Gradient Boosting
 * Soft Voting Ensemble
 
-### Model Evaluation Results
+### Model Results
 
 | Model                | Accuracy | Precision |     Recall |   F1 Score |    ROC-AUC |
 | -------------------- | -------: | --------: | ---------: | ---------: | ---------: |
@@ -240,120 +205,174 @@ Models evaluated include:
 | Gradient Boosting    |   56.68% |    56.96% | **83.72%** | **67.80%** |     57.96% |
 | Soft Voting Ensemble |   56.19% |    58.57% |     66.79% |     62.41% |     58.17% |
 
-Logistic Regression produced the strongest ROC-AUC among the evaluated models and was selected for the saved prediction pipeline.
+Logistic Regression gave the highest ROC-AUC among the models I tested, so it was selected for the saved prediction pipeline.
 
-### Important ML Limitation
+### About the ML Result
 
-The predictive performance is intentionally reported transparently.
+The model performance is not very strong, and I have kept that visible intentionally.
 
-The dataset contains relatively weak predictive separation between placed and non-placed students. Therefore, this project does **not** claim that the model can reliably determine whether a real student will be placed.
+The current synthetic dataset does not provide strong predictive separation between placed and non-placed students.
 
-The model output is presented as a:
+Because of this, the model output is shown only as a:
 
 > **Prototype placement estimate based on synthetic data**
 
-rather than a guaranteed placement probability.
-
-The trained model is cached using `joblib`, preventing unnecessary retraining whenever the application starts.
+It should not be interpreted as the real probability that a student will get placed.
 
 ---
 
-## ✨ AI-Generated Placement Readiness Reports
+## Placement Readiness Report
 
-The project integrates the **Groq API** to generate natural-language student placement-readiness reports.
+The project uses the Groq API to generate a readable placement-readiness report.
 
-The current report generation pipeline uses:
+The LLM does **not** calculate the placement statistics.
+
+The application first calculates the student's results using the analytics, benchmarking and recommendation modules.
+
+The report is then generated from:
 
 ```text
-Verified Student Data
-        +
-Placed-Student Benchmarks
-        +
-Detected Strengths
-        +
+Student Data
++
+Benchmark Comparison
++
+Strengths
++
 Improvement Areas
-        +
-System Recommendations
-        +
++
+Recommendations
++
 ML Estimate
-        │
-        ▼
-Grounded Prompt
-        │
-        ▼
-Groq LLM
-        │
-        ▼
-Placement Readiness Report
 ```
 
-The generated report contains:
+The LLM is mainly used to explain these already-calculated results in natural language.
 
-* Placement Readiness Summary
-* Key Strengths
-* Priority Improvement Areas
-* Recommended Preparation Plan
-* Model Estimate
-* Important Note
-
-### AI Grounding and Guardrails
-
-The LLM is instructed to:
-
-* Use only supplied application facts.
-* Avoid inventing student information.
-* Avoid changing numerical values.
-* Avoid causal placement claims.
-* Avoid presenting ML estimates as guarantees.
-* Avoid inventing companies, platforms, certifications, or target careers.
-* Avoid inventing preparation timelines or numerical improvement targets.
-* Respect already-identified student strengths.
-* Base recommendations on system-generated preparation actions.
-* Clearly disclose that the dataset is synthetic.
-
-### AI Fallback System
-
-The application includes a deterministic fallback report generator.
-
-If the external AI service is unavailable or returns an unusable response, the system generates a structured report using verified analytics and recommendations instead of allowing the application to fail.
-
-This improves the reliability of the deployed application.
+If the external AI service is unavailable, the application can generate a fallback report using the information already calculated by the system.
 
 ---
 
-## 📊 Interactive Dashboard
+## Placement Copilot
 
-The application is built using **Streamlit** and contains two primary sections.
+Placement Copilot is the chatbot inside the application.
 
-### Placement Overview
+It can handle:
 
-Provides:
+* questions about the active dataset,
+* questions about a particular student,
+* placement-preparation questions,
+* questions about the application,
+* general conversation,
+* and follow-up questions.
 
-* Overall placement metrics
-* Placement-status distribution
-* Branch-wise placement analysis
-* College-tier analysis
-* Internship placement trends
-* Project placement trends
-* Low-sample group inspection
-* Salary statistics
-* Salary distribution
+For questions that require dataset statistics, the application calculates the required information from the active dataset instead of expecting the chatbot to invent numbers.
 
-### Student Intelligence
+### Multilingual Support
 
-Allows a student ID to be entered and displays:
+Placement Copilot currently supports:
 
-* Student profile
-* Placed-student benchmark comparison
-* Strengths
-* Priority improvement areas
-* Personalized preparation recommendations
-* Machine-learning placement estimate
-* AI-generated placement-readiness report
+* English
+* Tamil
+* Hindi
+* Kannada
+
+It also handles common Romanized forms, which means users can type Indian-language sentences using English characters.
 
 ---
 
-## 🛠️ Technology Stack
+## Resume & Job Match
+
+The Resume & Job Match module compares skills detected in a resume with skills mentioned in a job description.
+
+Users can either upload a document or paste the text manually.
+
+Supported document types:
+
+* PDF
+* DOCX
+* TXT
+
+DOCX upload has been tested through the current application workflow.
+
+PDF and TXT support are implemented, but not every possible document layout has been tested.
+
+### Skill Detection
+
+The current implementation uses a predefined skill list with aliases.
+
+Some supported skills include:
+
+* Python
+* Java
+* JavaScript
+* HTML
+* CSS
+* SQL
+* MySQL
+* PostgreSQL
+* MongoDB
+* React
+* Node.js
+* Flask
+* Django
+* Streamlit
+* Pandas
+* NumPy
+* Matplotlib
+* Plotly
+* Scikit-learn
+* Machine Learning
+* Deep Learning
+* Data Analysis
+* Data Visualization
+* Statistics
+* NLP
+* LLMs
+* RAG
+* Git
+* GitHub
+* Docker
+* AWS
+* Azure
+* Power BI
+* Tableau
+* Excel
+* Communication
+* Leadership
+* Problem Solving
+
+The current matcher is rule-based and deterministic. It is not a full semantic resume parser.
+
+### Job Description Classification
+
+Skills detected in the job description are grouped into:
+
+* **Required Skills**
+* **Preferred Skills**
+* **Other Mentioned Skills**
+
+The classification uses section headings and wording such as required, mandatory, preferred, desirable and similar terms.
+
+### Skill Coverage
+
+The module displays:
+
+* Required Skill Coverage
+* Preferred Skill Coverage
+* Overall Detected Skill Coverage
+* Matched Required Skills
+* Missing Required Skills
+* Matched Preferred Skills
+* Missing Preferred Skills
+* Other Mentioned Skills
+* Additional Resume Skills
+
+The percentage shown here represents **detected job-skill coverage**.
+
+It is not a hiring probability, interview probability, ATS score, recruiter score or placement probability.
+
+---
+
+## Technology Stack
 
 ### Programming
 
@@ -374,32 +393,30 @@ Allows a student ID to be entered and displays:
 * Scikit-learn
 * Joblib
 
-### Generative AI
+### AI
 
 * Groq API
 * GPT-OSS
-* Prompt engineering
-* Grounded report generation
-* Deterministic fallback reporting
+
+### Document Processing
+
+* pypdf
+* python-docx
 
 ### Application
 
 * Streamlit
 
-### Configuration
+### Other Tools
 
 * python-dotenv
-* Streamlit Secrets
-
-### Version Control & Deployment
-
 * Git
 * GitHub
 * Streamlit Community Cloud
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```text
 csv_project/
@@ -415,18 +432,20 @@ csv_project/
 │
 ├── outputs/
 │   └── charts/
-│       ├── placement_distribution.png
-│       ├── branch_placement_rate.png
-│       └── salary_distribution.png
 │
 ├── src/
 │   ├── main.py
 │   ├── data_loader.py
+│   ├── data_validator.py
+│   ├── schema_mapper.py
 │   ├── analytics.py
 │   ├── visualization.py
 │   ├── intelligence.py
 │   ├── ml_model.py
-│   └── report_generator.py
+│   ├── report_generator.py
+│   ├── chatbot.py
+│   ├── career_intelligence.py
+│   └── document_parser.py
 │
 ├── .env
 ├── .gitignore
@@ -436,80 +455,67 @@ csv_project/
 
 ---
 
-## 📚 Dataset
+## Dataset
 
-The prototype uses the **Student Placement Prediction Dataset 2026** published on Kaggle by Mansehaj Preet.
+The default dataset used in this project is:
 
-Dataset characteristics:
+**Student Placement Prediction Dataset 2026**
 
-* 100,000 records
-* 26 columns
-* Academic attributes
-* Technical skill scores
-* Aptitude and reasoning scores
-* Communication and mock interview scores
-* Project and internship experience
-* Certifications
-* GitHub activity
-* Placement status
-* Salary package
+* **Author:** Mansehaj Preet
+* **Platform:** Kaggle
+* **License:** CC0: Public Domain
+* **Rows:** 100,000
+* **Columns:** 26
 
-### Dataset Disclaimer
+The dataset contains academic, technical, aptitude, communication, internship, project, placement and salary-related information.
 
-The dataset is **synthetic**.
+### Important Note
 
-It does not represent 100,000 verified real-world students.
+The dataset is synthetic.
 
-The project uses the dataset to demonstrate the architecture and functionality of a placement intelligence system.
+The 100,000 records should not be described as data collected from 100,000 real students.
 
-**Dataset:** Student Placement Prediction Dataset 2026
-**Source:** Kaggle
-**Author:** Mansehaj Preet
-**License:** CC0: Public Domain
+I use the dataset to develop and demonstrate the placement-intelligence workflow.
 
----
-
-## 📈 Current Dataset Overview
-
-The current dataset contains:
+### Demo Dataset Statistics
 
 * **Total Students:** 100,000
 * **Placed Students:** 54,459
-* **Not Placed:** 45,541
+* **Not Placed Students:** 45,541
 * **Placement Rate:** 54.46%
 * **Average Salary of Placed Students:** 13.32 LPA
 * **Highest Salary:** 20.44 LPA
 
-These values describe the current synthetic dataset and should not be generalized to real institutions or student populations.
+These values describe only the bundled synthetic dataset.
 
 ---
 
-## 🚀 Installation
+## Installation
 
-### 1. Clone the Repository
+Clone the repository:
 
 ```bash
 git clone https://github.com/varshavarada/student-placement-intelligence-system.git
 cd student-placement-intelligence-system
 ```
 
-### 2. Create a Virtual Environment
+Create a virtual environment.
 
-#### Windows
+### Windows
 
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
 ```
 
-#### macOS / Linux
+### macOS / Linux
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3. Install Dependencies
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
@@ -517,174 +523,220 @@ pip install -r requirements.txt
 
 ---
 
-## 🔐 Environment Configuration
+## Environment Setup
 
-For local development, create a `.env` file in the project root:
+For local use, create a `.env` file in the project root:
 
 ```text
 GROQ_API_KEY=your_groq_api_key
 ```
 
-Never commit the `.env` file or API credentials to GitHub.
+Do not commit `.env` or API keys to GitHub.
 
-For Streamlit Community Cloud deployment, the Groq API key should be configured through **Streamlit Secrets** rather than stored in the repository.
+For Streamlit deployment, the API key can be stored using Streamlit Secrets.
 
 ---
 
-## ▶️ Running the Project
+## Running the Project
 
-### Run the Analysis Pipeline
+Run the main pipeline:
 
 ```bash
 python src/main.py
 ```
 
-This executes the analytics pipeline, loads or trains the ML component where required, and generates static visualizations.
-
-### Launch the Dashboard
+Start the Streamlit application:
 
 ```bash
 streamlit run app/dashboard.py
 ```
 
-Streamlit will provide a local application URL in the terminal.
-
 ---
 
-## ☁️ Deployment
+## Deployment
 
-The application is deployed using **Streamlit Community Cloud**.
+The project is deployed using Streamlit Community Cloud.
 
-### Live Application
+**Live Application**
 
 https://student-placement-intelligence-vaidehi.streamlit.app/
 
-Deployment configuration:
-
-```text
-Repository:
-varshavarada/student-placement-intelligence-system
-
-Branch:
-main
-
-Main file:
-app/dashboard.py
-```
-
-The Groq API credential is configured securely through Streamlit's secrets management and is not stored in the GitHub repository.
-
----
-
-## 🔒 Security Practices
-
-The project follows several basic security practices:
-
-* API keys are stored using environment variables or deployment secrets.
-* `.env` is excluded from Git.
-* Virtual environments and IDE-specific files are excluded from version control.
-* Secrets are not hard-coded in Python source files.
-* The LLM receives structured application information rather than unrestricted system access.
-* A deterministic fallback report protects application availability when the external AI service fails.
-
-For real institutional deployment, additional authentication, authorization, encryption, privacy review, audit logging, and student-data governance would be required.
-
----
-
-## ⚠️ Current Limitations
-
-1. The current dataset is synthetic.
-2. ML predictive performance is limited.
-3. Placement relationships shown by analytics are associations, not proof of causation.
-4. The system currently benchmarks students against aggregate placed-student statistics rather than institution-specific cohorts.
-5. AI generation depends on an external LLM service when live generation is enabled.
-6. The prototype does not currently include user authentication or institutional access controls.
-7. Recommendations are preparation guidance rather than guarantees of placement success.
-8. Real institutional deployment would require validated data, privacy controls, fairness evaluation, and continuous monitoring.
-
----
-
-## 🔮 Future Improvements
-
-Potential production-level extensions include:
-
-* Integration with verified institutional placement data
-* Department-specific benchmarking
-* Batch-specific benchmarking
-* Role-specific placement-readiness analysis
-* Historical placement trend analysis
-* Recruiter and company-level analytics
-* Explainable machine-learning components
-* Model monitoring and retraining
-* Authentication and role-based access control
-* Separate student and placement-officer dashboards
-* Database integration
-* Automated data ingestion
-* Privacy and consent controls
-* Institution-specific recommendation engines
-* Longitudinal student progress tracking
-* Model fairness and bias monitoring
-
----
-
-## 💡 Project Philosophy
-
-The objective of this project is not simply to predict whether a student will be placed.
-
-Its primary goal is to convert student placement data into **understandable and actionable intelligence**.
-
-The system combines:
-
-**Data Analytics + Statistical Benchmarking + Student Intelligence + Machine Learning + Generative AI + Interactive Visualization**
-
-to support more informed placement preparation.
-
-Machine learning is only one component of the overall system.
-
-The primary value comes from combining transparent analytics, benchmark-based student intelligence, personalized recommendations, and grounded natural-language reporting.
-
----
-
-## ⚖️ Responsible Use
-
-This project should be treated as a **decision-support prototype**.
-
-Placement decisions should never be made solely from the ML estimate, benchmark score, or AI-generated report.
-
-Real-world institutional deployment would require:
-
-* Validated real-world data
-* Fairness and bias evaluation
-* Student privacy protection
-* Appropriate consent mechanisms
-* Model monitoring
-* Human oversight
-* Secure authentication and authorization
-* Institutional data governance
-
----
-
-## 👩‍💻 Repository
-
-GitHub Repository:
+**GitHub Repository**
 
 https://github.com/varshavarada/student-placement-intelligence-system
 
-Live Application:
+**Branch**
+
+```text
+main
+```
+
+**Main Streamlit File**
+
+```text
+app/dashboard.py
+```
+
+---
+
+## Current Limitations
+
+The current version still has some limitations:
+
+* the built-in dataset is synthetic,
+* the ML model has limited predictive performance,
+* placement trends show associations rather than causation,
+* the demo-trained model is not applied directly to unrelated institution datasets,
+* some dashboard features require specific columns,
+* student benchmarking currently uses overall placed-student averages,
+* live AI features depend on an external API,
+* resume/JD matching uses a predefined supported-skill list,
+* semantic skill matching is not implemented,
+* OCR is not available for scanned or image-only documents,
+* complex PDF layouts may not always extract correctly,
+* resume skill coverage is not an ATS score,
+* authentication and role-based access are not part of the current version,
+* and real-world fairness testing has not yet been carried out.
+
+---
+
+## Future Enhancements
+
+There are several useful directions in which the project can be extended.
+
+### Better Institution-Level Analysis
+
+* real institutional placement-data integration,
+* department-wise benchmarking,
+* batch-wise benchmarking,
+* historical placement analysis,
+* institution-specific recommendations.
+
+### Role and Company Matching
+
+* role-specific skill analysis,
+* company-specific skill-gap analysis,
+* company eligibility checking,
+* job-role recommendations,
+* recruiter/company-level analytics.
+
+### Resume Matching Improvements
+
+* semantic skill matching,
+* embedding-based similarity,
+* larger skill taxonomy,
+* better synonym handling,
+* experience requirement matching,
+* education requirement matching,
+* improved resume/JD section detection.
+
+### Better Document Support
+
+* OCR for scanned resumes,
+* image-based PDF support,
+* better multi-column extraction,
+* improved table handling,
+* support for additional document types.
+
+### Student Progress Tracking
+
+A future version could track student improvement over time, including:
+
+* aptitude,
+* coding,
+* mock interviews,
+* projects,
+* certifications,
+* resume updates,
+* and placement-readiness progress.
+
+### Machine Learning Improvements
+
+If validated real institutional data becomes available, the ML component can be extended with:
+
+* institution-specific training,
+* stronger validation,
+* explainable ML,
+* feature importance,
+* model calibration,
+* retraining,
+* performance monitoring,
+* and data-drift checks.
+
+### Placement Copilot Improvements
+
+Future improvements may include:
+
+* more advanced dataset questions,
+* additional languages,
+* resume/JD explanations through chat,
+* institution-specific knowledge,
+* evidence-backed responses,
+* and voice interaction.
+
+### Institutional Features
+
+A larger institutional version could include:
+
+* student login,
+* faculty login,
+* placement-officer login,
+* admin access,
+* role-based permissions,
+* database integration,
+* profile management,
+* audit logs,
+* and controlled report exports.
+
+---
+
+## Project Purpose
+
+The main aim of this project is not simply to predict whether a student will get placed.
+
+I wanted to make placement data more useful.
+
+The project helps answer questions such as:
+
+* What patterns are present in the placement data?
+* Where does an individual student stand?
+* Which areas may need more preparation?
+* What skills are missing for a particular job description?
+* How can this information be presented in a simpler form?
+
+Machine learning is one part of the project, not the complete project.
+
+The larger goal is to combine analytics, benchmarking, preparation guidance, resume matching and conversational access in one application.
+
+---
+
+## Responsible Use
+
+This project is currently a prototype.
+
+The ML estimate, benchmark comparison, placement-readiness report, chatbot responses and resume/JD skill coverage should not be used alone to make real recruitment or student decisions.
+
+A production version would require verified institutional data, privacy controls, secure access, fairness testing and human oversight.
+
+---
+
+## Repository
+
+**GitHub**
+
+https://github.com/varshavarada/student-placement-intelligence-system
+
+**Live Demo**
 
 https://student-placement-intelligence-vaidehi.streamlit.app/
 
 ---
 
-## 📄 License and Dataset Attribution
-
-The project source code may be licensed according to the repository owner's chosen software license.
-
-The dataset used by this prototype is separately distributed as:
+## Dataset Attribution
 
 **Student Placement Prediction Dataset 2026**
-**Author:** Mansehaj Preet
-**Platform:** Kaggle
-**License:** CC0: Public Domain
+Author: Mansehaj Preet
+Platform: Kaggle
+License: CC0: Public Domain
 
-The dataset is used for prototype development and demonstration purposes.
+The dataset is used for project development and demonstration.

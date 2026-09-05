@@ -7,3 +7,5 @@ plotly
 python-dotenv
 groq
 openpyxl
+pypdf
+python-docx

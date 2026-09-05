@@ -2,12 +2,10 @@ from pathlib import Path
 import hashlib
 import io
 import sys
-
+import re
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-
-
 # ==================================================
 # PROJECT PATH
 # ==================================================
@@ -15,7 +13,10 @@ import streamlit as st
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SRC_PATH = PROJECT_ROOT / "src"
 
-sys.path.insert(0, str(SRC_PATH))
+sys.path.insert(
+    0,
+    str(SRC_PATH),
+)
 
 
 # ==================================================
@@ -23,6 +24,16 @@ sys.path.insert(0, str(SRC_PATH))
 # ==================================================
 
 from data_loader import load_data
+
+from career_intelligence import (
+    analyze_resume_text,
+    analyze_job_description,
+    compare_resume_with_job,
+)
+
+from document_parser import (
+    extract_document_text,
+)
 
 from analytics import (
     get_branch_analysis,
@@ -32,15 +43,18 @@ from analytics import (
     get_work_experience_analysis,
 )
 
-from data_validator import validate_placement_data
+
 
 from schema_mapper import (
+    CANONICAL_COLUMNS,
     apply_column_mapping,
     convert_salary_to_lpa,
     detect_column_mapping,
     get_optional_columns,
     get_required_columns,
 )
+
+from data_validator import validate_placement_data
 
 from intelligence import (
     analyze_student,
@@ -50,7 +64,7 @@ from intelligence import (
 
 
 # ==================================================
-# OPTIONAL ML IMPORT
+# OPTIONAL ML / REPORT IMPORTS
 # ==================================================
 
 try:
@@ -65,12 +79,10 @@ except Exception:
     ML_AVAILABLE = False
 
 
-# ==================================================
-# OPTIONAL REPORT IMPORT
-# ==================================================
-
 try:
-    from report_generator import generate_student_report
+    from report_generator import (
+        generate_student_report,
+    )
 
     REPORT_AVAILABLE = True
 
@@ -78,16 +90,13 @@ except Exception:
     REPORT_AVAILABLE = False
 
 
-# ==================================================
-# OPTIONAL CHATBOT IMPORT
-# ==================================================
-
 try:
     from chatbot import ask_placement_chatbot
 
     CHATBOT_AVAILABLE = True
 
-except Exception:
+except Exception as error:
+    print(f"Chatbot import error: {error}")
     CHATBOT_AVAILABLE = False
 
 
@@ -96,45 +105,11 @@ except Exception:
 # ==================================================
 
 st.set_page_config(
-    page_title="Student Placement Intelligence System",
+    page_title=(
+        "Student Placement Intelligence System"
+    ),
     page_icon="🎓",
     layout="wide",
-)
-
-
-# ==================================================
-# UI STYLING
-# ==================================================
-
-st.markdown(
-    """
-    <style>
-        section[data-testid="stSidebar"] {
-            width: 285px !important;
-        }
-
-        section[data-testid="stSidebar"] > div {
-            width: 285px !important;
-        }
-
-        .block-container {
-            padding-left: 2.5rem;
-            padding-right: 2.5rem;
-            padding-top: 2rem;
-            max-width: 1400px;
-        }
-
-        section[data-testid="stSidebar"] label {
-            font-size: 0.96rem;
-        }
-
-        section[data-testid="stSidebar"] hr {
-            margin-top: 1.4rem;
-            margin-bottom: 1.4rem;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True,
 )
 
 
@@ -189,12 +164,18 @@ DISPLAY_NAMES = {
 
 
 # ==================================================
-# FILE HELPERS
+# HELPERS
 # ==================================================
 
-def read_uploaded_dataset(uploaded_file):
+def read_uploaded_dataset(
+    uploaded_file,
+):
     file_bytes = uploaded_file.getvalue()
-    filename = uploaded_file.name.lower()
+
+    filename = (
+        uploaded_file.name
+        .lower()
+    )
 
     if filename.endswith(".csv"):
         return pd.read_csv(
@@ -211,15 +192,15 @@ def read_uploaded_dataset(uploaded_file):
     )
 
 
-def build_file_signature(uploaded_file):
+def build_file_signature(
+    uploaded_file,
+):
+    file_bytes = uploaded_file.getvalue()
+
     return hashlib.md5(
-        uploaded_file.getvalue()
+        file_bytes
     ).hexdigest()
 
-
-# ==================================================
-# ANALYTICS HELPERS
-# ==================================================
 
 def get_overall_metrics_safe(df):
     total_students = len(df)
@@ -246,8 +227,10 @@ def get_overall_metrics_safe(df):
 
     average_salary = None
 
-    if "salary_package_lpa" in df.columns:
-
+    if (
+        "salary_package_lpa"
+        in df.columns
+    ):
         placed_salary = df.loc[
             (
                 df["placement_status"]
@@ -262,11 +245,20 @@ def get_overall_metrics_safe(df):
             )
 
     return {
-        "total_students": total_students,
-        "placed_students": placed_students,
-        "not_placed_students": not_placed_students,
-        "placement_rate": placement_rate,
-        "average_salary": average_salary,
+        "total_students":
+            total_students,
+
+        "placed_students":
+            placed_students,
+
+        "not_placed_students":
+            not_placed_students,
+
+        "placement_rate":
+            placement_rate,
+
+        "average_salary":
+            average_salary,
     }
 
 
@@ -287,12 +279,6 @@ def get_student_profile_columns(df):
         "internships_count",
         "certifications_count",
         "github_repos",
-        "linkedin_connections",
-        "attendance_percentage",
-        "backlogs",
-        "extracurricular_score",
-        "leadership_score",
-        "volunteer_experience",
         "placement_status",
         "salary_package_lpa",
     ]
@@ -331,13 +317,11 @@ try:
     demo_df = load_data()
 
 except Exception as error:
-
     st.error(
         "Unable to load the demo dataset."
     )
 
     st.exception(error)
-
     st.stop()
 
 
@@ -346,9 +330,7 @@ except Exception as error:
 # ==================================================
 
 if "active_df" not in st.session_state:
-    st.session_state.active_df = (
-        demo_df.copy()
-    )
+    st.session_state.active_df = demo_df.copy()
 
 if "active_dataset_name" not in st.session_state:
     st.session_state.active_dataset_name = (
@@ -363,14 +345,12 @@ if "data_mode" not in st.session_state:
 if "data_warnings" not in st.session_state:
     st.session_state.data_warnings = []
 
-if "salary_conversion_message" not in st.session_state:
-    st.session_state.salary_conversion_message = None
-
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-
-if "chat_dataset_key" not in st.session_state:
-    st.session_state.chat_dataset_key = None
+if "salary_conversion_message" not in (
+    st.session_state
+):
+    st.session_state.salary_conversion_message = (
+        None
+    )
 
 
 # ==================================================
@@ -385,11 +365,12 @@ st.sidebar.markdown(
     "### 📂 Data Source"
 )
 
+
 data_source = st.sidebar.radio(
     "Choose dataset",
     [
         "Demo Dataset",
-        "Upload Data",
+        "Upload Institution Data",
     ],
 )
 
@@ -414,7 +395,9 @@ if data_source == "Demo Dataset":
 
     st.session_state.data_warnings = []
 
-    st.session_state.salary_conversion_message = None
+    st.session_state.salary_conversion_message = (
+        None
+    )
 
 
 # ==================================================
@@ -429,37 +412,41 @@ else:
         "the demo dataset."
     )
 
-    uploaded_file = st.sidebar.file_uploader(
-        "Upload Placement Data",
-        type=[
-            "csv",
-            "xlsx",
-        ],
+    uploaded_file = (
+        st.sidebar.file_uploader(
+            "Upload Placement Data",
+            type=[
+                "csv",
+                "xlsx",
+            ],
+        )
     )
+
 
     if uploaded_file is not None:
 
         try:
-
-            uploaded_df = read_uploaded_dataset(
-                uploaded_file
+            uploaded_df = (
+                read_uploaded_dataset(
+                    uploaded_file
+                )
             )
 
         except Exception as error:
-
             st.sidebar.error(
                 "Unable to read the uploaded file."
             )
 
             st.sidebar.exception(error)
-
             uploaded_df = None
 
 
         if uploaded_df is not None:
 
-            file_signature = build_file_signature(
-                uploaded_file
+            file_signature = (
+                build_file_signature(
+                    uploaded_file
+                )
             )
 
             st.sidebar.success(
@@ -471,28 +458,26 @@ else:
                 f"{len(uploaded_df.columns)} columns"
             )
 
+
             (
                 automatic_mapping,
                 unmapped_columns,
-                missing_required_columns,
+                missing_required,
             ) = detect_column_mapping(
                 uploaded_df
             )
 
-
-            # ======================================
-            # COLUMN MAPPING
-            # ======================================
 
             st.sidebar.markdown(
                 "### 🔗 Column Mapping"
             )
 
             st.sidebar.caption(
-                "Suggested mappings are generated "
-                "automatically. Review them before "
-                "using the dataset."
+                "We suggested mappings "
+                "automatically. Review them "
+                "before using the dataset."
             )
+
 
             uploaded_columns = list(
                 uploaded_df.columns
@@ -503,25 +488,33 @@ else:
                 *uploaded_columns,
             ]
 
+
             selected_mapping = {}
 
 
-            # ======================================
+            # ==========================================
             # REQUIRED FIELDS
-            # ======================================
+            # ==========================================
 
             st.sidebar.markdown(
                 "**Required Fields**"
             )
 
-            for canonical_column in get_required_columns():
 
-                suggested = automatic_mapping.get(
-                    canonical_column
+            for canonical_column in (
+                get_required_columns()
+            ):
+
+                suggested = (
+                    automatic_mapping.get(
+                        canonical_column
+                    )
                 )
 
-                if suggested in uploaded_columns:
-
+                if (
+                    suggested
+                    in uploaded_columns
+                ):
                     default_index = (
                         mapping_options.index(
                             suggested
@@ -529,45 +522,53 @@ else:
                     )
 
                 else:
-
                     default_index = 0
 
 
-                selection = st.sidebar.selectbox(
-                    (
-                        f"{DISPLAY_NAMES.get(canonical_column, canonical_column)} *"
-                    ),
-                    mapping_options,
-                    index=default_index,
-                    key=(
-                        f"{file_signature}_required_"
-                        f"{canonical_column}"
-                    ),
+                selection = (
+                    st.sidebar.selectbox(
+                        (
+                            f"{DISPLAY_NAMES.get(canonical_column, canonical_column)} *"
+                        ),
+                        mapping_options,
+                        index=default_index,
+                        key=(
+                            f"{file_signature}_"
+                            f"required_"
+                            f"{canonical_column}"
+                        ),
+                    )
                 )
 
-                if selection != NOT_MAPPED:
 
+                if selection != NOT_MAPPED:
                     selected_mapping[
                         canonical_column
                     ] = selection
 
 
-            # ======================================
+            # ==========================================
             # OPTIONAL FIELDS
-            # ======================================
+            # ==========================================
 
             with st.sidebar.expander(
                 "Optional Fields"
             ):
 
-                for canonical_column in get_optional_columns():
+                for canonical_column in (
+                    get_optional_columns()
+                ):
 
-                    suggested = automatic_mapping.get(
-                        canonical_column
+                    suggested = (
+                        automatic_mapping.get(
+                            canonical_column
+                        )
                     )
 
-                    if suggested in uploaded_columns:
-
+                    if (
+                        suggested
+                        in uploaded_columns
+                    ):
                         default_index = (
                             mapping_options.index(
                                 suggested
@@ -575,33 +576,38 @@ else:
                         )
 
                     else:
-
                         default_index = 0
 
 
-                    selection = st.selectbox(
-                        DISPLAY_NAMES.get(
-                            canonical_column,
-                            canonical_column,
-                        ),
-                        mapping_options,
-                        index=default_index,
-                        key=(
-                            f"{file_signature}_optional_"
-                            f"{canonical_column}"
-                        ),
+                    selection = (
+                        st.selectbox(
+                            DISPLAY_NAMES.get(
+                                canonical_column,
+                                canonical_column,
+                            ),
+                            mapping_options,
+                            index=default_index,
+                            key=(
+                                f"{file_signature}_"
+                                f"optional_"
+                                f"{canonical_column}"
+                            ),
+                        )
                     )
 
-                    if selection != NOT_MAPPED:
 
+                    if (
+                        selection
+                        != NOT_MAPPED
+                    ):
                         selected_mapping[
                             canonical_column
                         ] = selection
 
 
-            # ======================================
+            # ==========================================
             # SALARY UNIT
-            # ======================================
+            # ==========================================
 
             salary_unit = "LPA"
 
@@ -611,33 +617,38 @@ else:
                 )
             )
 
+
             if salary_source_column:
 
                 st.sidebar.markdown(
                     "### 💰 Salary Format"
                 )
 
-                salary_unit = st.sidebar.selectbox(
-                    "Salary Unit",
-                    [
-                        "LPA",
-                        "Annual INR",
-                        "Monthly INR",
-                    ],
-                    help=(
-                        "Choose the unit used by "
-                        "the uploaded salary or "
-                        "package column. "
-                        "The system converts salary "
-                        "internally to LPA."
-                    ),
-                    key=(
-                        f"salary_unit_"
-                        f"{file_signature}"
-                    ),
+                salary_unit = (
+                    st.sidebar.selectbox(
+                        "Salary Unit",
+                        [
+                            "LPA",
+                            "Annual INR",
+                            "Monthly INR",
+                        ],
+                        help=(
+                            "Choose the unit used by "
+                            "the uploaded salary or "
+                            "package column. The system "
+                            "converts salary internally "
+                            "to LPA."
+                        ),
+                        key=(
+                            f"salary_unit_"
+                            f"{file_signature}"
+                        ),
+                    )
                 )
 
 
+                # Simple warning — no automatic
+                # conversion without user confirmation.
                 raw_salary = pd.to_numeric(
                     uploaded_df[
                         salary_source_column
@@ -656,7 +667,6 @@ else:
                         median_salary > 1000
                         and salary_unit == "LPA"
                     ):
-
                         st.sidebar.warning(
                             "These salary values look "
                             "large for LPA. If this "
@@ -666,9 +676,9 @@ else:
                         )
 
 
-            # ======================================
+            # ==========================================
             # MAPPING SUMMARY
-            # ======================================
+            # ==========================================
 
             with st.sidebar.expander(
                 "Mapping Summary"
@@ -676,21 +686,25 @@ else:
 
                 if selected_mapping:
 
-                    mapping_table = pd.DataFrame(
-                        {
-                            "System Field": [
-                                DISPLAY_NAMES.get(
-                                    key,
-                                    key,
-                                )
-                                for key
-                                in selected_mapping
-                            ],
+                    mapping_table = (
+                        pd.DataFrame(
+                            {
+                                "System Field":
+                                    [
+                                        DISPLAY_NAMES.get(
+                                            key,
+                                            key,
+                                        )
+                                        for key
+                                        in selected_mapping
+                                    ],
 
-                            "Uploaded Column": list(
-                                selected_mapping.values()
-                            ),
-                        }
+                                "Uploaded Column":
+                                    list(
+                                        selected_mapping.values()
+                                    ),
+                            }
+                        )
                     )
 
                     st.dataframe(
@@ -700,15 +714,14 @@ else:
                     )
 
                 else:
-
                     st.info(
                         "No fields are mapped yet."
                     )
 
 
-            # ======================================
+            # ==========================================
             # VALIDATE BUTTON
-            # ======================================
+            # ==========================================
 
             if st.sidebar.button(
                 "Validate & Use Dataset",
@@ -784,9 +797,11 @@ else:
 
                     else:
 
-                        mapped_df = apply_column_mapping(
-                            uploaded_df,
-                            selected_mapping,
+                        mapped_df = (
+                            apply_column_mapping(
+                                uploaded_df,
+                                selected_mapping,
+                            )
                         )
 
 
@@ -794,9 +809,11 @@ else:
                         # SALARY NORMALIZATION
                         # ==================================
 
-                        mapped_df = convert_salary_to_lpa(
-                            mapped_df,
-                            salary_unit,
+                        mapped_df = (
+                            convert_salary_to_lpa(
+                                mapped_df,
+                                salary_unit,
+                            )
                         )
 
 
@@ -813,11 +830,11 @@ else:
                         if errors:
 
                             st.sidebar.error(
-                                "Dataset validation failed."
+                                "Dataset validation "
+                                "failed."
                             )
 
                             for error in errors:
-
                                 st.sidebar.error(
                                     error
                                 )
@@ -845,7 +862,8 @@ else:
                             if (
                                 "salary_package_lpa"
                                 in cleaned_df.columns
-                                and salary_unit != "LPA"
+                                and salary_unit
+                                != "LPA"
                             ):
 
                                 st.session_state.salary_conversion_message = (
@@ -855,14 +873,14 @@ else:
                                 )
 
                             else:
-
                                 st.session_state.salary_conversion_message = (
                                     None
                                 )
 
 
                             st.sidebar.success(
-                                "Dataset validated successfully."
+                                "Dataset validated "
+                                "successfully."
                             )
 
 
@@ -890,7 +908,7 @@ st.sidebar.markdown(
 )
 
 st.sidebar.write(
-    f"**{active_dataset_name}**"
+    active_dataset_name
 )
 
 st.sidebar.caption(
@@ -898,8 +916,9 @@ st.sidebar.caption(
 )
 
 
-if st.session_state.salary_conversion_message:
-
+if (
+    st.session_state.salary_conversion_message
+):
     st.sidebar.info(
         st.session_state.salary_conversion_message
     )
@@ -910,14 +929,10 @@ if st.session_state.data_warnings:
     with st.sidebar.expander(
         "Data Quality Warnings"
     ):
-
         for warning in (
             st.session_state.data_warnings
         ):
-
-            st.warning(
-                warning
-            )
+            st.warning(warning)
 
 
 # ==================================================
@@ -933,9 +948,10 @@ st.sidebar.markdown(
 page = st.sidebar.radio(
     "Go to",
     [
-        "📊 Overview",
-        "🎯 Student Insights",
-        "💬 Placement Copilot",
+        "Overview",
+        "Student Intelligence",
+        "Resume & Job Match",
+        "Placement Copilot",
     ],
 )
 
@@ -949,25 +965,26 @@ st.title(
 )
 
 st.caption(
-    "Analyze placement outcomes, understand student "
-    "readiness and explore institutional placement "
-    "data through grounded AI insights."
+    "Analyze placement outcomes, understand student readiness and "
+    "explore institutional placement data through grounded AI insights."
 )
 
 
 if data_mode == "Demo Dataset":
 
     st.info(
-        "🧪 Current Data Source: Demo Dataset • "
-        "Synthetic placement data used for prototype testing."
+        "🧪 Current Data Source: Demo dataset. "
+        "The prototype uses synthetic placement data."
     )
 
 else:
 
     st.info(
         f"🏫 Current Data Source: "
-        f"{active_dataset_name} • "
-        f"{len(active_df):,} students"
+        f"{active_dataset_name} "
+        f"({len(active_df):,} students). "
+        f"Analytics are being calculated from "
+        f"the mapped institutional dataset."
     )
 
 
@@ -975,19 +992,23 @@ else:
 # OVERVIEW PAGE
 # ==================================================
 
-if page == "📊 Overview":
+if page == "Overview":
 
     st.header(
-        "📊 Placement Overview"
+        "Placement Overview"
     )
 
 
-    metrics = get_overall_metrics_safe(
-        active_df
+    metrics = (
+        get_overall_metrics_safe(
+            active_df
+        )
     )
 
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4 = (
+        st.columns(4)
+    )
 
 
     col1.metric(
@@ -1004,19 +1025,24 @@ if page == "📊 Overview":
 
     col3.metric(
         "Placement Rate",
-        f"{metrics['placement_rate']:.2f}%",
+        (
+            f"{metrics['placement_rate']:.2f}%"
+        ),
     )
 
 
-    if metrics["average_salary"] is not None:
-
+    if (
+        metrics["average_salary"]
+        is not None
+    ):
         col4.metric(
             "Average Salary",
-            f"{metrics['average_salary']:.2f} LPA",
+            (
+                f"{metrics['average_salary']:.2f} LPA"
+            ),
         )
 
     else:
-
         col4.metric(
             "Average Salary",
             "Unavailable",
@@ -1126,21 +1152,19 @@ if page == "📊 Overview":
             )
 
         except Exception as error:
-
             st.warning(
-                "Branch analysis could not be calculated."
+                "Branch analysis could "
+                "not be calculated."
             )
 
-            st.caption(
-                str(error)
-            )
+            st.caption(str(error))
 
     else:
-
         st.info(
-            "Branch analysis is unavailable because "
-            "the uploaded dataset does not contain "
-            "a mapped branch field."
+            "Branch analysis is unavailable "
+            "because the uploaded dataset "
+            "does not contain a mapped "
+            "branch field."
         )
 
 
@@ -1153,7 +1177,10 @@ if page == "📊 Overview":
     )
 
 
-    if "college_tier" in active_df.columns:
+    if (
+        "college_tier"
+        in active_df.columns
+    ):
 
         try:
 
@@ -1192,20 +1219,20 @@ if page == "📊 Overview":
         except Exception as error:
 
             st.warning(
-                "College-tier analysis could "
-                "not be calculated."
+                "College-tier analysis "
+                "could not be calculated."
             )
 
-            st.caption(
-                str(error)
-            )
+            st.caption(str(error))
 
     else:
 
         st.info(
-            "College-tier analysis is unavailable "
-            "because the uploaded dataset does not "
-            "contain a mapped college-tier field."
+            "College-tier analysis is "
+            "unavailable because the "
+            "uploaded dataset does not "
+            "contain a mapped "
+            "college-tier field."
         )
 
 
@@ -1218,16 +1245,17 @@ if page == "📊 Overview":
     )
 
 
-    # ==============================================
     # INTERNSHIPS
-    # ==============================================
 
     st.subheader(
         "Internships vs Placement Rate"
     )
 
 
-    if "internships_count" in active_df.columns:
+    if (
+        "internships_count"
+        in active_df.columns
+    ):
 
         try:
 
@@ -1238,11 +1266,13 @@ if page == "📊 Overview":
             )
 
 
-            reliable = internship_analysis[
+            reliable = (
                 internship_analysis[
-                    "reliable_group"
+                    internship_analysis[
+                        "reliable_group"
+                    ]
                 ]
-            ]
+            )
 
 
             if not reliable.empty:
@@ -1275,9 +1305,10 @@ if page == "📊 Overview":
 
 
             st.caption(
-                "Only groups with at least 100 students "
-                "are treated as reliable. "
-                "The relationship is associative, not causal."
+                "Only groups with at least "
+                "100 students are shown as "
+                "reliable. The relationship "
+                "is associative, not causal."
             )
 
 
@@ -1288,29 +1319,29 @@ if page == "📊 Overview":
                 "not be calculated."
             )
 
-            st.caption(
-                str(error)
-            )
+            st.caption(str(error))
 
 
     else:
 
         st.info(
-            "Internship analysis is unavailable "
-            "because internship data was not mapped."
+            "Internship analysis is "
+            "unavailable because internship "
+            "data was not mapped."
         )
 
 
-    # ==============================================
     # PROJECTS
-    # ==============================================
 
     st.subheader(
         "Projects vs Placement Rate"
     )
 
 
-    if "projects_count" in active_df.columns:
+    if (
+        "projects_count"
+        in active_df.columns
+    ):
 
         try:
 
@@ -1360,9 +1391,10 @@ if page == "📊 Overview":
 
 
             st.caption(
-                "Only groups with at least 100 students "
-                "are treated as reliable. "
-                "The relationship is associative, not causal."
+                "Only groups with at least "
+                "100 students are shown as "
+                "reliable. The relationship "
+                "is associative, not causal."
             )
 
 
@@ -1375,16 +1407,19 @@ if page == "📊 Overview":
             )
 
 
-            if not low_sample_projects.empty:
+            if (
+                not low_sample_projects.empty
+            ):
 
                 with st.expander(
-                    "View Low-Sample Project Groups"
+                    "View Low-Sample "
+                    "Project Groups"
                 ):
 
                     st.dataframe(
                         low_sample_projects,
-                        hide_index=True,
                         use_container_width=True,
+                        hide_index=True,
                     )
 
 
@@ -1395,16 +1430,16 @@ if page == "📊 Overview":
                 "not be calculated."
             )
 
-            st.caption(
-                str(error)
-            )
+            st.caption(str(error))
 
 
     else:
 
         st.info(
-            "Project analysis is unavailable "
-            "because project-count data was not mapped."
+            "Project analysis is "
+            "unavailable because "
+            "project-count data "
+            "was not mapped."
         )
 
 
@@ -1417,7 +1452,10 @@ if page == "📊 Overview":
     )
 
 
-    if "salary_package_lpa" in active_df.columns:
+    if (
+        "salary_package_lpa"
+        in active_df.columns
+    ):
 
         try:
 
@@ -1428,98 +1466,78 @@ if page == "📊 Overview":
             )
 
 
-            if salary_analysis is not None:
+            salary_col1, salary_col2, (
+                salary_col3
+            ), salary_col4 = st.columns(4)
 
+
+            salary_col1.metric(
+                "Average Salary",
                 (
-                    salary_col1,
-                    salary_col2,
-                    salary_col3,
-                    salary_col4,
-                ) = st.columns(4)
+                    f"{salary_analysis['average_salary']:.2f} LPA"
+                ),
+            )
 
 
-                salary_col1.metric(
-                    "Average Salary",
-                    (
-                        f"{salary_analysis['average_salary']:.2f} LPA"
-                    ),
-                )
+            salary_col2.metric(
+                "Median Salary",
+                (
+                    f"{salary_analysis['median_salary']:.2f} LPA"
+                ),
+            )
 
 
-                salary_col2.metric(
-                    "Median Salary",
-                    (
-                        f"{salary_analysis['median_salary']:.2f} LPA"
-                    ),
-                )
+            salary_col3.metric(
+                "Highest Salary",
+                (
+                    f"{salary_analysis['highest_salary']:.2f} LPA"
+                ),
+            )
 
 
-                salary_col3.metric(
-                    "Highest Salary",
-                    (
-                        f"{salary_analysis['highest_salary']:.2f} LPA"
-                    ),
-                )
+            salary_col4.metric(
+                "75th Percentile",
+                (
+                    f"{salary_analysis['q3_salary']:.2f} LPA"
+                ),
+            )
 
 
-                salary_col4.metric(
-                    "75th Percentile",
-                    (
-                        f"{salary_analysis['q3_salary']:.2f} LPA"
-                    ),
-                )
+            st.subheader(
+                "Salary Distribution"
+            )
 
 
-                st.subheader(
-                    "Salary Distribution"
-                )
-
-
-                placed_salary_df = (
+            placed_salary_df = (
+                active_df[
                     active_df[
-                        active_df[
-                            "placement_status"
-                        ]
-                        == "Placed"
-                    ][
-                        [
-                            "salary_package_lpa"
-                        ]
+                        "placement_status"
                     ]
-                    .dropna()
+                    == "Placed"
+                ][
+                    [
+                        "salary_package_lpa"
+                    ]
+                ]
+                .dropna()
+            )
+
+
+            if not placed_salary_df.empty:
+
+                fig = px.histogram(
+                    placed_salary_df,
+                    x="salary_package_lpa",
+                    nbins=30,
+                    labels={
+                        "salary_package_lpa":
+                            "Salary Package (LPA)"
+                    },
                 )
 
-
-                if not placed_salary_df.empty:
-
-                    fig = px.histogram(
-                        placed_salary_df,
-                        x="salary_package_lpa",
-                        nbins=30,
-                        labels={
-                            "salary_package_lpa":
-                                "Salary Package (LPA)"
-                        },
-                    )
-
-                    st.plotly_chart(
-                        fig,
-                        use_container_width=True,
-                    )
-
-                else:
-
-                    st.info(
-                        "No valid placed-student salary "
-                        "values are available."
-                    )
-
-
-            else:
-
-                st.info(
-                    "Salary analytics are unavailable "
-                    "because no valid salary values were found."
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True,
                 )
 
 
@@ -1530,16 +1548,16 @@ if page == "📊 Overview":
                 "not be calculated."
             )
 
-            st.caption(
-                str(error)
-            )
+            st.caption(str(error))
 
 
     else:
 
         st.info(
-            "Salary analytics are unavailable because "
-            "salary/package data was not mapped."
+            "Salary analytics are "
+            "unavailable because "
+            "salary/package data "
+            "was not mapped."
         )
 
 
@@ -1547,9 +1565,11 @@ if page == "📊 Overview":
 # STUDENT INTELLIGENCE PAGE
 # ==================================================
 
-elif page == "🎯 Student Insights":
+elif page == "Student Intelligence":
 
-    st.header("+🎯 Student Intelligence")
+    st.header(
+        "Student Intelligence"
+    )
 
 
     if active_df.empty:
@@ -1561,10 +1581,6 @@ elif page == "🎯 Student Insights":
         st.stop()
 
 
-    # ==============================================
-    # STUDENT SELECTOR
-    # ==============================================
-
     student_ids = (
         active_df[
             "student_id"
@@ -1574,9 +1590,11 @@ elif page == "🎯 Student Insights":
     )
 
 
-    selected_student_id = st.selectbox(
-        "Select Student",
-        student_ids,
+    selected_student_id = (
+        st.selectbox(
+            "Select Student",
+            student_ids,
+        )
     )
 
 
@@ -1607,7 +1625,7 @@ elif page == "🎯 Student Insights":
 
 
     # ==============================================
-    # STUDENT PROFILE
+    # PROFILE
     # ==============================================
 
     st.subheader(
@@ -1622,32 +1640,35 @@ elif page == "🎯 Student Insights":
     )
 
 
-    profile_rows = []
+    profile_data = {}
 
 
     for column in profile_columns:
 
-        profile_rows.append(
-            {
-                "Field":
-                    DISPLAY_NAMES.get(
-                        column,
-                        column,
-                    ),
-
-                "Value":
-                    format_profile_value(
-                        column,
-                        student[column],
-                    ),
-            }
+        profile_data[
+            DISPLAY_NAMES.get(
+                column,
+                column,
+            )
+        ] = format_profile_value(
+            column,
+            student[column],
         )
 
 
-    st.dataframe(
-        pd.DataFrame(
-            profile_rows
+    profile_df = pd.DataFrame(
+        list(
+            profile_data.items()
         ),
+        columns=[
+            "Field",
+            "Value",
+        ],
+    )
+
+
+    st.dataframe(
+        profile_df,
         hide_index=True,
         use_container_width=True,
     )
@@ -1661,16 +1682,19 @@ elif page == "🎯 Student Insights":
         feature
         for feature
         in INTELLIGENCE_REQUIRED_FEATURES
-        if feature not in active_df.columns
+        if feature
+        not in active_df.columns
     ]
 
 
     if missing_intelligence_features:
 
         st.info(
-            "Complete student benchmark intelligence "
-            "is unavailable for this dataset because "
-            "some required analytical fields were not mapped."
+            "Complete student benchmark "
+            "intelligence is unavailable "
+            "for this dataset because some "
+            "required analytical fields "
+            "were not mapped."
         )
 
 
@@ -1693,18 +1717,16 @@ elif page == "🎯 Student Insights":
 
 
         st.caption(
-            "The dataset is still usable for cohort "
-            "analytics and the student profile above. "
-            "Unsupported intelligence modules are "
-            "disabled instead of inventing missing information."
+            "The uploaded dataset is still "
+            "usable for cohort analytics and "
+            "the student profile above. "
+            "Unsupported intelligence modules "
+            "are disabled instead of "
+            "estimating missing information."
         )
 
 
     else:
-
-        # ==========================================
-        # BENCHMARKS
-        # ==========================================
 
         benchmarks = (
             get_placed_student_benchmarks(
@@ -1718,10 +1740,6 @@ elif page == "🎯 Student Insights":
             benchmarks,
         )
 
-
-        # ==========================================
-        # RECOMMENDATIONS
-        # ==========================================
 
         recommendations = (
             generate_recommendations(
@@ -1793,7 +1811,7 @@ elif page == "🎯 Student Insights":
 
 
         # ==========================================
-        # STRENGTHS / IMPROVEMENTS
+        # STRENGTHS + IMPROVEMENTS
         # ==========================================
 
         strength_col, improvement_col = (
@@ -1807,17 +1825,16 @@ elif page == "🎯 Student Insights":
                 "Strengths"
             )
 
-
             if analysis["strengths"]:
 
-                for item in analysis["strengths"]:
-
+                for item in (
+                    analysis["strengths"]
+                ):
                     st.success(
                         item["feature"]
                     )
 
             else:
-
                 st.info(
                     "No strong benchmark "
                     "advantages were detected."
@@ -1830,21 +1847,22 @@ elif page == "🎯 Student Insights":
                 "Improvement Areas"
             )
 
-
-            if analysis["improvement_areas"]:
+            if (
+                analysis[
+                    "improvement_areas"
+                ]
+            ):
 
                 for item in (
                     analysis[
                         "improvement_areas"
                     ]
                 ):
-
                     st.warning(
                         item["feature"]
                     )
 
             else:
-
                 st.info(
                     "No major benchmark "
                     "gaps were detected."
@@ -1852,7 +1870,7 @@ elif page == "🎯 Student Insights":
 
 
         # ==========================================
-        # PREPARATION RECOMMENDATIONS
+        # RECOMMENDATIONS
         # ==========================================
 
         st.subheader(
@@ -1862,8 +1880,9 @@ elif page == "🎯 Student Insights":
 
         if recommendations:
 
-            for recommendation in recommendations:
-
+            for recommendation in (
+                recommendations
+            ):
                 st.write(
                     f"• {recommendation}"
                 )
@@ -1880,7 +1899,10 @@ elif page == "🎯 Student Insights":
         # DEMO-ONLY ML + AI REPORT
         # ==========================================
 
-        if data_mode == "Demo Dataset":
+        if (
+            data_mode
+            == "Demo Dataset"
+        ):
 
             prediction = None
 
@@ -1894,7 +1916,6 @@ elif page == "🎯 Student Insights":
                             active_df
                         )
                     )
-
 
                     prediction = (
                         predict_student_probability(
@@ -1931,16 +1952,20 @@ elif page == "🎯 Student Insights":
 
 
                     st.caption(
-                        "Prototype model estimate trained "
-                        "on synthetic data. It is not a "
-                        "guaranteed real-world placement probability."
+                        "This is a prototype "
+                        "model estimate trained "
+                        "on synthetic data. "
+                        "It is not a guaranteed "
+                        "real-world placement "
+                        "probability."
                     )
 
 
                 except Exception as error:
 
                     st.warning(
-                        "ML estimate is temporarily unavailable."
+                        "ML estimate is "
+                        "temporarily unavailable."
                     )
 
                     st.caption(
@@ -1950,7 +1975,8 @@ elif page == "🎯 Student Insights":
 
             if (
                 REPORT_AVAILABLE
-                and prediction is not None
+                and prediction
+                is not None
             ):
 
                 st.subheader(
@@ -1991,12 +2017,10 @@ elif page == "🎯 Student Insights":
 
 
                         if source:
-
                             st.caption(
                                 f"Report source: "
                                 f"{source}"
                             )
-
 
                     else:
 
@@ -2008,8 +2032,9 @@ elif page == "🎯 Student Insights":
                 except Exception as error:
 
                     st.warning(
-                        "The natural-language report "
-                        "is temporarily unavailable."
+                        "The natural-language "
+                        "report is temporarily "
+                        "unavailable."
                     )
 
                     st.caption(
@@ -2020,12 +2045,548 @@ elif page == "🎯 Student Insights":
         else:
 
             st.info(
-                "ML placement estimation and the current "
-                "AI report are disabled for institution-uploaded "
-                "datasets. The existing model was trained on "
-                "the demo synthetic dataset and should not be "
-                "applied to unrelated institutional data without "
-                "compatible validation."
+                "ML placement estimation and "
+                "the current AI report are "
+                "disabled for institution-uploaded "
+                "datasets. The existing model was "
+                "trained on the demo synthetic "
+                "schema and should not be applied "
+                "to unrelated institutional data "
+                "without compatible features and "
+                "validation."
+            )
+
+
+
+# ==================================================
+# RESUME & JOB MATCH PAGE
+# ==================================================
+
+elif page == "Resume & Job Match":
+
+    st.header(
+        "📄 Resume & Job Match"
+    )
+
+    st.write(
+        "Compare a student's resume with a target job description "
+        "to identify detected skills, matched skills and skill gaps."
+    )
+
+    st.caption(
+        "Skill coverage is based only on supported skills detected in the "
+        "supplied text. It is not a hiring probability or placement probability."
+    )
+
+    # ==================================================
+    # RESUME INPUT
+    # ==================================================
+
+    st.subheader(
+        "1. Student Resume"
+    )
+
+    resume_file = st.file_uploader(
+        "Upload Resume",
+        type=[
+            "pdf",
+            "docx",
+            "txt",
+        ],
+        key="career_resume_upload",
+    )
+
+    resume_text = ""
+
+    if resume_file is not None:
+        resume_result = extract_document_text(
+            resume_file
+        )
+
+        if resume_result["success"]:
+            resume_text = resume_result["text"]
+            st.success(
+                f"Resume loaded: {resume_result['filename']}"
+            )
+        else:
+            st.error(
+                resume_result["message"]
+            )
+
+    with st.expander(
+        "Or paste resume text manually"
+    ):
+        pasted_resume_text = st.text_area(
+            "Resume Text",
+            height=180,
+            key="career_resume_text",
+            placeholder=(
+                "Paste resume content here..."
+            ),
+        )
+
+    if (
+        pasted_resume_text
+        and pasted_resume_text.strip()
+    ):
+        resume_text = pasted_resume_text.strip()
+
+    # ==================================================
+    # JOB DESCRIPTION INPUT
+    # ==================================================
+
+    st.subheader(
+        "2. Target Job Description"
+    )
+
+    jd_file = st.file_uploader(
+        "Upload Job Description",
+        type=[
+            "pdf",
+            "docx",
+            "txt",
+        ],
+        key="career_jd_upload",
+    )
+
+    jd_text = ""
+
+    if jd_file is not None:
+        jd_result = extract_document_text(
+            jd_file
+        )
+
+        if jd_result["success"]:
+            jd_text = jd_result["text"]
+            st.success(
+                f"Job description loaded: {jd_result['filename']}"
+            )
+        else:
+            st.error(
+                jd_result["message"]
+            )
+
+    pasted_jd_text = st.text_area(
+        "Or paste the Job Description",
+        height=200,
+        key="career_jd_text",
+        placeholder=(
+            "Paste the target job description here..."
+        ),
+    )
+
+    if (
+        pasted_jd_text
+        and pasted_jd_text.strip()
+    ):
+        jd_text = pasted_jd_text.strip()
+
+    # ==================================================
+    # ANALYZE BUTTON
+    # ==================================================
+
+    if st.button(
+        "Analyze Resume Against Job",
+        type="primary",
+        use_container_width=True,
+        key="career_match_button",
+    ):
+
+        if not resume_text:
+            st.error(
+                "Please upload or paste a resume first."
+            )
+
+        elif not jd_text:
+            st.error(
+                "Please upload or paste a job description first."
+            )
+
+        else:
+            resume_analysis = analyze_resume_text(
+                resume_text
+            )
+
+            job_analysis = analyze_job_description(
+                jd_text
+            )
+
+            match_result = compare_resume_with_job(
+                resume_analysis,
+                job_analysis,
+            )
+
+            # ==========================================
+            # ANALYSIS SUMMARY
+            # ==========================================
+
+            st.markdown("---")
+
+            st.subheader(
+                "Analysis Summary"
+            )
+
+            summary_col1, summary_col2, summary_col3 = (
+                st.columns(3)
+            )
+
+            summary_col1.metric(
+                "Resume Skills Detected",
+                resume_analysis["skill_count"],
+            )
+
+            summary_col2.metric(
+                "JD Skills Detected",
+                job_analysis["skill_count"],
+            )
+
+            summary_col3.metric(
+                "Overall Matched Skills",
+                match_result["matched_count"],
+            )
+
+            # ==========================================
+            # JD SKILL CLASSIFICATION
+            # ==========================================
+
+            st.subheader(
+                "JD Skill Classification"
+            )
+
+            st.caption(
+                "Skills are grouped using wording found in the job description. "
+                "This is a rule-based classification and should be interpreted "
+                "as decision support."
+            )
+
+            required_skills = job_analysis.get(
+                "required_skills",
+                [],
+            )
+            preferred_skills = job_analysis.get(
+                "preferred_skills",
+                [],
+            )
+            general_skills = job_analysis.get(
+                "general_skills",
+                [],
+            )
+
+            required_col, preferred_col, general_col = (
+                st.columns(3)
+            )
+
+            with required_col:
+                st.markdown(
+                    "#### 🔴 Required"
+                )
+                if required_skills:
+                    for skill in required_skills:
+                        st.error(
+                            skill.title()
+                        )
+                else:
+                    st.info(
+                        "No explicitly required skills detected."
+                    )
+
+            with preferred_col:
+                st.markdown(
+                    "#### 🟡 Preferred"
+                )
+                if preferred_skills:
+                    for skill in preferred_skills:
+                        st.warning(
+                            skill.title()
+                        )
+                else:
+                    st.info(
+                        "No explicitly preferred skills detected."
+                    )
+
+            with general_col:
+                st.markdown(
+                    "#### 🔵 Other Mentioned"
+                )
+                if general_skills:
+                    for skill in general_skills:
+                        st.info(
+                            skill.title()
+                        )
+                else:
+                    st.info(
+                        "No other supported skills detected."
+                    )
+
+            # ==========================================
+            # JOB SKILL COVERAGE
+            # ==========================================
+
+            st.subheader(
+                "Job Skill Coverage"
+            )
+
+            required_coverage = match_result.get(
+                "required_coverage"
+            )
+            preferred_coverage = match_result.get(
+                "preferred_coverage"
+            )
+            overall_coverage = match_result.get(
+                "overall_coverage"
+            )
+
+            coverage_col1, coverage_col2, coverage_col3 = (
+                st.columns(3)
+            )
+
+            with coverage_col1:
+                st.metric(
+                    "Required Skill Coverage",
+                    (
+                        f"{required_coverage:.2f}%"
+                        if required_coverage is not None
+                        else "N/A"
+                    ),
+                )
+
+            with coverage_col2:
+                st.metric(
+                    "Preferred Skill Coverage",
+                    (
+                        f"{preferred_coverage:.2f}%"
+                        if preferred_coverage is not None
+                        else "N/A"
+                    ),
+                )
+
+            with coverage_col3:
+                st.metric(
+                    "Overall Detected Coverage",
+                    (
+                        f"{overall_coverage:.2f}%"
+                        if overall_coverage is not None
+                        else "N/A"
+                    ),
+                )
+
+            if required_coverage is not None:
+                st.markdown(
+                    "#### Required Skill Match"
+                )
+                st.progress(
+                    min(
+                        max(
+                            required_coverage / 100,
+                            0.0,
+                        ),
+                        1.0,
+                    )
+                )
+                st.caption(
+                    f"{match_result['required_matched_count']} of "
+                    f"{match_result['required_skill_count']} explicitly "
+                    f"required JD skills were detected in the resume."
+                )
+            else:
+                st.info(
+                    "The job description did not explicitly identify any "
+                    "supported skills as required. Overall detected skill "
+                    "coverage is shown as a descriptive measure instead."
+                )
+
+            # ==========================================
+            # REQUIRED SKILL COMPARISON
+            # ==========================================
+
+            st.markdown("---")
+
+            required_match_col, required_gap_col = (
+                st.columns(2)
+            )
+
+            with required_match_col:
+                st.subheader(
+                    "✅ Matched Required Skills"
+                )
+                matched_required = match_result.get(
+                    "matched_required_skills",
+                    [],
+                )
+                if matched_required:
+                    for skill in matched_required:
+                        st.success(
+                            skill.title()
+                        )
+                elif required_skills:
+                    st.info(
+                        "No explicitly required skills were matched."
+                    )
+                else:
+                    st.info(
+                        "No explicitly required skills were detected in the JD."
+                    )
+
+            with required_gap_col:
+                st.subheader(
+                    "⚠️ Missing Required Skills"
+                )
+                missing_required = match_result.get(
+                    "missing_required_skills",
+                    [],
+                )
+                if missing_required:
+                    for skill in missing_required:
+                        st.error(
+                            skill.title()
+                        )
+                elif required_skills:
+                    st.success(
+                        "No required skill gaps detected."
+                    )
+                else:
+                    st.info(
+                        "No explicitly required skills were detected in the JD."
+                    )
+
+            # ==========================================
+            # PREFERRED SKILL COMPARISON
+            # ==========================================
+
+            preferred_match_col, preferred_gap_col = (
+                st.columns(2)
+            )
+
+            with preferred_match_col:
+                st.subheader(
+                    "✅ Matched Preferred Skills"
+                )
+                matched_preferred = match_result.get(
+                    "matched_preferred_skills",
+                    [],
+                )
+                if matched_preferred:
+                    for skill in matched_preferred:
+                        st.success(
+                            skill.title()
+                        )
+                elif preferred_skills:
+                    st.info(
+                        "No preferred skills were matched."
+                    )
+                else:
+                    st.info(
+                        "No explicitly preferred skills were detected in the JD."
+                    )
+
+            with preferred_gap_col:
+                st.subheader(
+                    "🟡 Missing Preferred Skills"
+                )
+                missing_preferred = match_result.get(
+                    "missing_preferred_skills",
+                    [],
+                )
+                if missing_preferred:
+                    for skill in missing_preferred:
+                        st.warning(
+                            skill.title()
+                        )
+                elif preferred_skills:
+                    st.success(
+                        "No preferred skill gaps detected."
+                    )
+                else:
+                    st.info(
+                        "No explicitly preferred skills were detected in the JD."
+                    )
+
+            # ==========================================
+            # OTHER MENTIONED JD SKILLS
+            # ==========================================
+
+            st.subheader(
+                "Other Mentioned JD Skills"
+            )
+
+            matched_general = match_result.get(
+                "matched_general_skills",
+                [],
+            )
+            missing_general = match_result.get(
+                "missing_general_skills",
+                [],
+            )
+
+            general_match_col, general_missing_col = (
+                st.columns(2)
+            )
+
+            with general_match_col:
+                st.markdown(
+                    "#### Detected in Resume"
+                )
+                if matched_general:
+                    for skill in matched_general:
+                        st.info(
+                            skill.title()
+                        )
+                else:
+                    st.caption(
+                        "No other mentioned JD skills were detected in the resume."
+                    )
+
+            with general_missing_col:
+                st.markdown(
+                    "#### Not Detected in Resume"
+                )
+                if missing_general:
+                    for skill in missing_general:
+                        st.info(
+                            skill.title()
+                        )
+                else:
+                    st.caption(
+                        "No unmatched general JD skills."
+                    )
+
+            # ==========================================
+            # ADDITIONAL RESUME SKILLS
+            # ==========================================
+
+            st.subheader(
+                "Additional Resume Skills"
+            )
+
+            additional_skills = match_result.get(
+                "additional_skills",
+                [],
+            )
+
+            if additional_skills:
+                st.write(
+                    ", ".join(
+                        skill.title()
+                        for skill in additional_skills
+                    )
+                )
+            else:
+                st.info(
+                    "No additional supported resume skills were detected "
+                    "beyond the JD skills."
+                )
+
+            # ==========================================
+            # TRANSPARENCY NOTICE
+            # ==========================================
+
+            st.markdown("---")
+
+            st.info(
+                "This comparison uses supported skills detected from the "
+                "supplied resume and job description. A skill shown as missing "
+                "means the system did not detect evidence for that skill in the "
+                "supplied resume text; it does not prove that the student lacks it."
             )
 
 
@@ -2033,122 +2594,64 @@ elif page == "🎯 Student Insights":
 # PLACEMENT COPILOT PAGE
 # ==================================================
 
-elif page == "💬 Placement Copilot":
+elif page == "Placement Copilot":
 
     st.header(
         "💬 Placement Copilot"
     )
 
-    st.caption(
-        "Ask questions about your active placement "
-        "dataset and receive grounded, data-backed answers."
+    st.write(
+        "Ask questions about your active placement dataset and "
+        "receive grounded, data-backed answers."
     )
 
-
     # ==============================================
-    # DATASET-SPECIFIC CHAT SESSION
-    # ==============================================
-
-    current_chat_dataset_key = (
-        f"{active_dataset_name}|"
-        f"{len(active_df)}|"
-        f"{','.join(active_df.columns)}"
-    )
-
-
-    if (
-        st.session_state.chat_dataset_key
-        != current_chat_dataset_key
-    ):
-
-        st.session_state.chat_history = []
-
-        st.session_state.chat_dataset_key = (
-            current_chat_dataset_key
-        )
-
-
-    # ==============================================
-    # AVAILABILITY CHECK
+    # ACTIVE DATASET SUMMARY
     # ==============================================
 
-    if not CHATBOT_AVAILABLE:
+    copilot_col1, copilot_col2 = st.columns(2)
 
-        st.error(
-            "Placement Copilot could not be loaded."
-        )
-
-        st.caption(
-            "Check that src/chatbot.py exists "
-            "and that the required dependencies "
-            "are installed."
-        )
-
-        st.stop()
-
-
-    if active_df.empty:
-
-        st.warning(
-            "The active dataset is empty."
-        )
-
-        st.stop()
-
-
-    # ==============================================
-    # DATASET SUMMARY
-    # ==============================================
-
-    dataset_col1, dataset_col2 = (
-        st.columns(2)
-    )
-
-
-    dataset_col1.metric(
+    copilot_col1.metric(
         "Active Dataset",
         active_dataset_name,
     )
 
-
-    dataset_col2.metric(
+    copilot_col2.metric(
         "Students",
         f"{len(active_df):,}",
     )
-
 
     # ==============================================
     # AVAILABLE FIELDS
     # ==============================================
 
-    available_fields = [
-        DISPLAY_NAMES.get(
-            column,
-            column,
-        )
-        for column in active_df.columns
-    ]
-
-
     with st.expander(
         "Fields available to the Copilot"
     ):
+        available_copilot_fields = [
+            DISPLAY_NAMES.get(
+                column,
+                column,
+            )
+            for column in active_df.columns
+        ]
 
         st.write(
             ", ".join(
-                available_fields
+                available_copilot_fields
             )
         )
-
 
     # ==============================================
     # EXAMPLE QUESTIONS
     # ==============================================
 
     st.markdown(
-        """
-**Try asking**
+        "**Try asking**"
+    )
 
+    st.markdown(
+        """
 - What is the placement rate?
 - Which branch has the highest placement rate?
 - Compare placed and not-placed students.
@@ -2156,228 +2659,209 @@ elif page == "💬 Placement Copilot":
 """
     )
 
-
     st.caption(
         "The Copilot answers from the active dataset. "
-        "Unavailable information should be reported "
-        "instead of being invented."
+        "Unavailable information should be reported instead of being invented."
     )
 
-
     # ==============================================
-    # CLEAR CHAT
-    # ==============================================
-
-    if st.button(
-        "🗑️ Clear Conversation"
-    ):
-
-        st.session_state.chat_history = []
-
-        st.rerun()
-
-
-    # ==============================================
-    # DISPLAY CHAT HISTORY
+    # DATASET-SPECIFIC CHAT HISTORY
     # ==============================================
 
-    for message in (
-        st.session_state.chat_history
-    ):
+    dataset_signature = (
+        f"{active_dataset_name}_"
+        f"{len(active_df)}_"
+        f"{len(active_df.columns)}"
+    )
 
-        with st.chat_message(
-            message["role"]
+    chat_history_key = (
+        f"placement_copilot_history_{dataset_signature}"
+    )
+
+    if chat_history_key not in st.session_state:
+        st.session_state[chat_history_key] = []
+
+    # ==============================================
+    # SOURCE LABELS
+    # ==============================================
+
+    source_messages = {
+        "app": "Based on application workflow",
+        "python": "Calculated directly from the active dataset",
+        "groq": "Grounded response using calculated dataset context",
+        "fallback": "Limited response — no unsupported facts generated",
+    }
+
+    # ==============================================
+    # CLEAR CONVERSATION
+    # ==============================================
+
+    _, clear_chat_col = st.columns(
+        [4, 1]
+    )
+
+    with clear_chat_col:
+        if st.button(
+            "Clear conversation",
+            key=f"clear_chat_{dataset_signature}",
+            use_container_width=True,
         ):
+            st.session_state[chat_history_key] = []
+            st.rerun()
 
-            st.markdown(
-                message["content"]
-            )
+    # ==============================================
+    # DISPLAY EXISTING HISTORY
+    # ==============================================
 
+    for message in st.session_state[chat_history_key]:
+        role = message.get(
+            "role",
+            "assistant",
+        )
+
+        content = message.get(
+            "content",
+            "",
+        )
+
+        source = message.get(
+            "source"
+        )
+
+        with st.chat_message(role):
+            st.markdown(content)
 
             if (
-                message["role"] == "assistant"
-                and message.get("source")
+                role == "assistant"
+                and source
+                and source != "conversation"
             ):
+                source_message = source_messages.get(
+                    source
+                )
 
-                source = message[
-                    "source"
-                ]
-
-
-                if source == "python":
-
+                if source_message:
                     st.caption(
-                        "✓ Calculated directly "
-                        "from the active dataset"
+                        f"✓ {source_message}"
                     )
-
-
-                elif source == "groq":
-
-                    st.caption(
-                        "✓ Grounded response using "
-                        "calculated dataset context"
-                    )
-
-
-                elif source == "fallback":
-
-                    st.caption(
-                        "Fallback response"
-                    )
-
 
     # ==============================================
-    # CHAT INPUT
+    # NEW CHAT INPUT
     # ==============================================
 
     user_question = st.chat_input(
-        "Ask about the active placement dataset..."
+        "Ask Placement Copilot..."
     )
-
 
     if user_question:
 
-        # ------------------------------------------
-        # STORE USER MESSAGE
-        # ------------------------------------------
+        # Keep only the conversation that existed before
+        # this new question so follow-up references work.
+        previous_history = list(
+            st.session_state[chat_history_key]
+        )
 
-        st.session_state.chat_history.append(
+        st.session_state[chat_history_key].append(
             {
                 "role": "user",
                 "content": user_question,
             }
         )
 
-
-        # ------------------------------------------
-        # DISPLAY USER MESSAGE
-        # ------------------------------------------
-
-        with st.chat_message(
-            "user"
-        ):
-
+        with st.chat_message("user"):
             st.markdown(
                 user_question
             )
 
+        with st.chat_message("assistant"):
 
-        # ------------------------------------------
-        # GENERATE RESPONSE
-        # ------------------------------------------
+            if not CHATBOT_AVAILABLE:
+                result = {
+                    "answer": (
+                        "Placement Copilot is temporarily unavailable."
+                    ),
+                    "source": "fallback",
+                    "message": "Chatbot module unavailable.",
+                }
 
-        with st.chat_message(
-            "assistant"
-        ):
-
-            with st.spinner(
-                "Analyzing placement data..."
-            ):
-
+            else:
                 try:
-
-                    result = (
-                        ask_placement_chatbot(
+                    with st.spinner(
+                        "Thinking..."
+                    ):
+                        result = ask_placement_chatbot(
                             user_question,
                             active_df,
+                            history=previous_history,
                         )
-                    )
-
-
-                    answer = result.get(
-                        "answer",
-                        (
-                            "Unable to generate "
-                            "a response."
-                        ),
-                    )
-
-
-                    source = result.get(
-                        "source",
-                        "fallback",
-                    )
-
-
-                    st.markdown(
-                        answer
-                    )
-
-
-                    if source == "python":
-
-                        st.caption(
-                            "✓ Calculated directly "
-                            "from the active dataset"
-                        )
-
-
-                    elif source == "groq":
-
-                        st.caption(
-                            "✓ Grounded response using "
-                            "calculated dataset context"
-                        )
-
-
-                    elif source == "fallback":
-
-                        st.caption(
-                            "Fallback response"
-                        )
-
-
-                    # ----------------------------------
-                    # STORE ASSISTANT MESSAGE
-                    # ----------------------------------
-
-                    st.session_state.chat_history.append(
-                        {
-                            "role": "assistant",
-                            "content": answer,
-                            "source": source,
-                        }
-                    )
-
 
                 except Exception as error:
-
-                    error_message = (
-                        "The Placement Copilot is "
-                        "temporarily unavailable."
+                    print(
+                        f"Placement Copilot runtime error: {error}"
                     )
 
+                    result = {
+                        "answer": (
+                            "I’m unable to answer that reliably right now."
+                        ),
+                        "source": "fallback",
+                        "message": "Chatbot runtime error.",
+                    }
 
-                    st.warning(
-                        error_message
-                    )
+            if not isinstance(result, dict):
+                result = {
+                    "answer": str(result),
+                    "source": "fallback",
+                    "message": "Unexpected chatbot response format.",
+                }
 
+            answer = str(
+                result.get(
+                    "answer",
+                    "I’m unable to answer that reliably right now.",
+                )
+            ).strip()
+
+            if not answer:
+                answer = (
+                    "I’m unable to answer that reliably right now."
+                )
+
+            source = result.get(
+                "source",
+                "fallback",
+            )
+
+            st.markdown(
+                answer
+            )
+
+            # Casual conversation intentionally has no
+            # technical grounding caption.
+            if source != "conversation":
+                source_message = source_messages.get(
+                    source
+                )
+
+                if source_message:
                     st.caption(
-                        str(error)
+                        f"✓ {source_message}"
                     )
 
-
-                    st.session_state.chat_history.append(
-                        {
-                            "role": "assistant",
-                            "content": error_message,
-                            "source": "fallback",
-                        }
-                    )
-
-
-    # ==============================================
-    # SCOPE NOTE
-    # ==============================================
+        st.session_state[chat_history_key].append(
+            {
+                "role": "assistant",
+                "content": answer,
+                "source": source,
+            }
+        )
 
     st.markdown("---")
 
     st.caption(
-        "Placement Copilot supports placement-data "
-        "exploration and decision support. Observed "
-        "dataset patterns are not causal evidence or "
-        "automatic hiring decisions."
+        "Placement Copilot supports placement-data exploration and "
+        "decision support. Observed dataset patterns are not causal "
+        "evidence or automatic hiring decisions."
     )
 
 
@@ -2391,13 +2875,18 @@ st.markdown("---")
 if data_mode == "Demo Dataset":
 
     st.caption(
-        "Student Placement Intelligence System • "
-        "Synthetic demo dataset"
+        "Student Placement Intelligence System "
+        "| Prototype demo mode using synthetic "
+        "placement data."
     )
 
 else:
 
     st.caption(
-        "Student Placement Intelligence System • "
-        "Institution dataset mode"
+        "Student Placement Intelligence System "
+        "| Institution dataset mode. Uploaded "
+        "data is mapped into the system's "
+        "internal schema and used only for "
+        "supported analytics in the current "
+        "Streamlit session."
     )
